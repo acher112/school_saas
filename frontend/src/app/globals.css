@@ -1,0 +1,22 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --school-primary: #2563EB;
+  --school-primary-hover: #1D4ED8;
+  --school-primary-light: #EFF6FF;
+  --school-accent: #F59E0B;
+  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-urdu: 'Noto Naskh Arabic', 'Urdu Typesetting', serif;
+}
+
+[dir="rtl"] {
+  font-family: var(--font-urdu);
+  letter-spacing: 0;
+  line-height: 1.7;
+}
+
+body {
+  font-family: var(--font-sans);
+}

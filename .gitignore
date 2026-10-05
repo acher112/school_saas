@@ -1,0 +1,42 @@
+# Python & Virtual Environments
+venv/
+.venv/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Environment Variables & Secrets
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Databases
+*.sqlite3
+*.db
+
+# Node & Next.js
+node_modules/
+.next/
+out/
+build/
+dist/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Static & Media uploads
+backend/staticfiles/
+backend/media/
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
