@@ -14,16 +14,18 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 try:
     from dotenv import load_dotenv
+    if (BASE_DIR / '.env.local-pg').exists():
+        load_dotenv(BASE_DIR / '.env.local-pg')
     load_dotenv(BASE_DIR / '.env')
 except ImportError:
-    env_file = BASE_DIR / '.env'
-    if env_file.exists():
-        with open(env_file, 'r', encoding='utf-8') as f:
-            for line in f:
-                line = line.strip()
-                if line and not line.startswith('#') and '=' in line:
-                    key, val = line.split('=', 1)
-                    os.environ.setdefault(key.strip(), val.strip().strip("'").strip('"'))
+    for env_path in (BASE_DIR / '.env.local-pg', BASE_DIR / '.env'):
+        if env_path.exists():
+            with open(env_path, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith('#') and '=' in line:
+                        key, val = line.split('=', 1)
+                        os.environ.setdefault(key.strip(), val.strip().strip("'").strip('"'))
 
 # Security settings - Strictly read from environment variables
 DEBUG = os.getenv('DEBUG', 'False').lower() in ('true', '1', 'yes')
@@ -107,14 +109,18 @@ DB_ENGINE = os.getenv('DB_ENGINE', 'django.db.backends.sqlite3')
 DB_NAME = os.getenv('DB_NAME')
 
 if DB_ENGINE == 'django.db.backends.postgresql' or os.getenv('DATABASE_URL'):
+    run_as_owner = os.getenv('RUN_AS_OWNER', '').lower() in ('true', '1', 'yes')
+    db_user = os.getenv('DB_OWNER_USER', 'school_saas_owner') if run_as_owner else os.getenv('DB_USER', os.getenv('DB_APP_USER', 'school_saas_app'))
+    db_password = os.getenv('DB_OWNER_PASSWORD', '') if run_as_owner else (os.getenv('DB_PASSWORD') or os.getenv('DB_APP_PASSWORD', ''))
+
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
             'NAME': DB_NAME or 'school_saas_dev',
-            'USER': os.getenv('DB_USER', 'school_saas_app'),
-            'PASSWORD': os.getenv('DB_PASSWORD') or os.getenv('DB_APP_PASSWORD', ''),
+            'USER': db_user,
+            'PASSWORD': db_password,
             'HOST': os.getenv('DB_HOST', '127.0.0.1'),
-            'PORT': os.getenv('DB_PORT', '5432'),
+            'PORT': os.getenv('DB_PORT', '55432'),
             'ATOMIC_REQUESTS': True,
         }
     }
