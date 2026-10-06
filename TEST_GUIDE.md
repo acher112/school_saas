@@ -62,20 +62,22 @@ A dedicated management command seeds realistic demo schools with Pakistani conte
 
 ```powershell
 # In new-system/backend:
-.\venv\Scripts\python manage.py seed_demo --password "Password123!"
+.\venv\Scripts\python manage.py seed_demo
 ```
 
-### Pre-configured Demo Accounts:
+### Pre-configured Demo Accounts (Usernames):
 - **School 1: Lahore Grammar City Campus (`lgc`)**
   - Subdomain: `lgc.myschoolsaas.com`
-  - Admin: `admin_lgc` / `Password123!`
-  - Principal: `principal_lgc` / `Password123!`
-  - Teacher: `teacher_lgc` / `Password123!`
-  - Accountant: `accountant_lgc` / `Password123!`
+  - Admin: `admin_lgc`
+  - Principal: `principal_lgc`
+  - Teacher: `teacher_lgc`
+  - Accountant: `accountant_lgc`
 - **School 2: Beacon Public Academy (`bpa`)**
   - Subdomain: `bpa.myschoolsaas.com`
-  - Admin: `admin_bpa` / `Password123!`
-  - Teacher: `teacher_bpa` / `Password123!`
+  - Admin: `admin_bpa`
+  - Teacher: `teacher_bpa`
+
+> Note: Strong passwords for demo accounts are generated at seed time and printed strictly once in the terminal. No default passwords exist in codebase or frontend.
 
 ---
 
