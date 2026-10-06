@@ -14,13 +14,17 @@ htmlcov/
 # Environment Variables & Secrets
 .env
 .env.local
+.env.local-pg
+backend/.env.local-pg
 .env.development.local
 .env.test.local
 .env.production.local
 
-# Databases
+# Databases & Local PG Clusters
 *.sqlite3
 *.db
+.pgdata/
+new-system/.pgdata/
 
 # Node & Next.js
 node_modules/

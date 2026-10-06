@@ -1,17 +1,26 @@
 """
 PostgreSQL Test Settings.
-Configures Django test suite execution against local PostgreSQL 18.
+Configures Django test suite execution against the project-local PostgreSQL cluster (port 55432).
 Uses the dedicated 'school_saas_test' database and the restricted 'school_saas_app' role.
 """
 import os
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Load credentials from git-ignored local PG environment file if present
+BASE_DIR = Path(__file__).resolve().parent.parent
+local_pg_env = BASE_DIR / '.env.local-pg'
+if local_pg_env.exists():
+    load_dotenv(local_pg_env, override=True)
+
 from .settings import *
 
-# Explicitly enforce PostgreSQL for test suite
+# Enforce PostgreSQL on local throwaway cluster port 55432
 DB_NAME = os.getenv('DB_TEST_NAME', 'school_saas_test')
-DB_USER = os.getenv('DB_USER', 'school_saas_app')
-DB_PASSWORD = os.getenv('DB_PASSWORD') or os.getenv('DB_APP_PASSWORD', '')
+DB_USER = os.getenv('DB_APP_USER', 'school_saas_app')
+DB_PASSWORD = os.getenv('DB_APP_PASSWORD', '')
 DB_HOST = os.getenv('DB_HOST', '127.0.0.1')
-DB_PORT = os.getenv('DB_PORT', '5432')
+DB_PORT = os.getenv('DB_PORT', '55432')
 
 DATABASES = {
     'default': {

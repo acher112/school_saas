@@ -203,3 +203,11 @@ CORS_ALLOW_HEADERS = [
     'x-requested-with',
     'x-school-slug',
 ]
+
+# CSRF Trusted Origins (Required for HTTPS and cross-origin admin/API requests)
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv('CSRF_TRUSTED_ORIGINS', 'http://localhost:3000,http://127.0.0.1:3000').split(',')
+    if origin.strip()
+]
+

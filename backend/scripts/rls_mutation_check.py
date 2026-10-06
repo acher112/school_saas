@@ -17,11 +17,15 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(BASE_DIR / '.env')
+local_pg_env = BASE_DIR / '.env.local-pg'
+if local_pg_env.exists():
+    load_dotenv(local_pg_env, override=True)
+else:
+    load_dotenv(BASE_DIR / '.env')
 
 def run_mutation_check():
     host = os.getenv('DB_HOST', '127.0.0.1')
-    port = int(os.getenv('DB_PORT', 5432))
+    port = int(os.getenv('DB_PORT', 55432))
     dbname = os.getenv('DB_NAME', 'school_saas_dev')
     owner_pwd = os.getenv('DB_OWNER_PASSWORD')
     app_pwd = os.getenv('DB_APP_PASSWORD')
