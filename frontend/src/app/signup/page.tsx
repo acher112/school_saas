@@ -27,7 +27,7 @@ export default function SignupPage() {
     invite_code: "",
     admin_username: "admin_beacon",
     admin_email: "admin@beaconhall.edu.pk",
-    admin_password: "Password123!",
+    admin_password: "",
     admin_first_name: "Tariq",
     admin_last_name: "Mahmood"
   });

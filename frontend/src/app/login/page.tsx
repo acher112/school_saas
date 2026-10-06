@@ -10,7 +10,7 @@ import { loginUser } from "@/lib/api";
 export default function LoginPage() {
   const [lang, setLang] = useState<Language>("en");
   const [username, setUsername] = useState("admin_lgc");
-  const [password, setPassword] = useState("Password123!");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [authSuccess, setAuthSuccess] = useState<any>(null);
@@ -18,9 +18,9 @@ export default function LoginPage() {
   const t = translations[lang];
   const isRTL = lang === "ur";
 
-  const handleDemoRoleSelect = (roleName: string, demoUser: string, defaultPass: string = "Password123!") => {
+  const handleDemoRoleSelect = (roleName: string, demoUser: string) => {
     setUsername(demoUser);
-    setPassword(defaultPass);
+    setPassword("");
     setErrorMsg("");
   };
 
@@ -92,6 +92,21 @@ export default function LoginPage() {
               </div>
             </div>
             <div className="pt-2 flex flex-col gap-2">
+              {authSuccess.user.must_change_password ? (
+                <Link
+                  href="/change-password"
+                  className="w-full py-3 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition shadow-md text-center block"
+                >
+                  ⚠️ Update Temporary Password Now →
+                </Link>
+              ) : (
+                <Link
+                  href="/dashboard"
+                  className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition shadow-md shadow-blue-500/20 text-center block"
+                >
+                  Proceed to Institutional Dashboard →
+                </Link>
+              )}
               <button
                 type="button"
                 onClick={() => setAuthSuccess(null)}
@@ -173,6 +188,9 @@ export default function LoginPage() {
                   <div className="text-[10px] text-slate-400 font-normal">Beacon Academy</div>
                 </button>
               </div>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-normal">
+                ℹ️ <strong>Demo accounts:</strong> Clicking above pre-fills the username only. Strong passwords are generated at seed time and printed strictly in your terminal (<code>python manage.py seed_demo</code>).
+              </p>
             </div>
 
             {/* Feedback Alerts */}

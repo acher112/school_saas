@@ -120,6 +120,39 @@ class CurrentSchoolView(APIView):
             "data": serializer.data
         })
 
+    def patch(self, request):
+        if not request.user.is_authenticated:
+            return Response({"detail": "Authentication credentials were not provided."}, status=status.HTTP_401_UNAUTHORIZED)
+        if request.user.role not in ('school_admin', 'superadmin'):
+            return Response({"detail": "Only school administrators can update school settings."}, status=status.HTTP_403_FORBIDDEN)
+        school = getattr(request, 'school', None) or get_current_school()
+        if not school:
+            return Response({"success": False, "message": "No school tenant resolved."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Allow updating branding and profile fields
+        allowed_fields = {'name', 'contact_email', 'contact_phone', 'address', 'city', 'brand_primary_color', 'brand_accent_color', 'logo'}
+        update_data = {k: v for k, v in request.data.items() if k in allowed_fields}
+
+        serializer = SchoolSerializer(school, data=update_data, partial=True)
+        if serializer.is_valid():
+            updated_school = serializer.save()
+            AuditLog.objects.create(
+                actor=request.user,
+                actor_username=request.user.username,
+                actor_role=request.user.role,
+                action="SCHOOL_SETTINGS_UPDATED",
+                resource_type="School",
+                resource_id=str(school.id),
+                details=update_data
+            )
+            return Response({
+                "success": True,
+                "message": "School settings and branding updated successfully.",
+                "data": SchoolSerializer(updated_school).data
+            })
+        return Response({"success": False, "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+
 class AcademicSessionListCreateView(generics.ListCreateAPIView):
     """
     Tenant-Scoped Endpoint: List and create academic sessions for the active school.
@@ -191,7 +224,9 @@ class UpdateRolePermissionView(generics.UpdateAPIView):
     """
     serializer_class = SchoolRolePermissionSerializer
     permission_classes = [IsAuthenticated, IsTenantMember, IsSchoolAdmin]
-    queryset = SchoolRolePermission.objects.all()
+
+    def get_queryset(self):
+        return SchoolRolePermission.objects.all()
 
 class AuditLogListView(generics.ListAPIView):
     """
@@ -270,3 +305,38 @@ class LoadSampleDataView(APIView):
                 "school": school.name
             }
         })
+
+class ClearSampleDataView(APIView):
+    """
+    Safely removes sample demonstration data for THAT school only, restoring a clean state.
+    """
+    permission_classes = [IsAuthenticated, IsTenantMember, IsSchoolAdmin]
+
+    def post(self, request):
+        school = get_current_school()
+        if not school:
+            return Response({"success": False, "message": "Tenant context required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        deleted_count, _ = SchoolAnnouncement.objects.filter(school=school).delete()
+        school.has_sample_data = False
+        school.save(update_fields=['has_sample_data'])
+
+        AuditLog.objects.create(
+            actor=request.user,
+            actor_username=request.user.username,
+            actor_role=request.user.role,
+            action="SAMPLE_DATA_CLEARED",
+            resource_type="School",
+            resource_id=str(school.id),
+            details={"notices_deleted": deleted_count}
+        )
+
+        return Response({
+            "success": True,
+            "message": "Sample demonstration data removed successfully.",
+            "data": {
+                "notices_deleted": deleted_count,
+                "school": school.name
+            }
+        })
+

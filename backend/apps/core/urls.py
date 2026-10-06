@@ -14,6 +14,7 @@ from apps.core.views import (
     AuditLogListView,
     SchoolAnnouncementListCreateView,
     LoadSampleDataView,
+    ClearSampleDataView,
 )
 
 urlpatterns = [
@@ -28,4 +29,5 @@ urlpatterns = [
     path('audit-logs/', AuditLogListView.as_view(), name='core-audit-logs'),
     path('announcements/', SchoolAnnouncementListCreateView.as_view(), name='core-announcements'),
     path('load-sample-data/', LoadSampleDataView.as_view(), name='core-load-sample-data'),
+    path('clear-sample-data/', ClearSampleDataView.as_view(), name='core-clear-sample-data'),
 ]

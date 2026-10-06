@@ -12,15 +12,18 @@ from django.core.exceptions import ImproperlyConfigured
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Read .env file if present in BASE_DIR (until python-dotenv is approved/installed)
-env_file = BASE_DIR / '.env'
-if env_file.exists():
-    with open(env_file, 'r', encoding='utf-8') as f:
-        for line in f:
-            line = line.strip()
-            if line and not line.startswith('#') and '=' in line:
-                key, val = line.split('=', 1)
-                os.environ.setdefault(key.strip(), val.strip().strip("'").strip('"'))
+try:
+    from dotenv import load_dotenv
+    load_dotenv(BASE_DIR / '.env')
+except ImportError:
+    env_file = BASE_DIR / '.env'
+    if env_file.exists():
+        with open(env_file, 'r', encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#') and '=' in line:
+                    key, val = line.split('=', 1)
+                    os.environ.setdefault(key.strip(), val.strip().strip("'").strip('"'))
 
 # Security settings - Strictly read from environment variables
 DEBUG = os.getenv('DEBUG', 'False').lower() in ('true', '1', 'yes')
@@ -99,17 +102,20 @@ WSGI_APPLICATION = 'config.wsgi.application'
 ASGI_APPLICATION = 'config.asgi.application'
 
 # Database configuration
-# Strictly read from environment variables; defaults to SQLite if DB_NAME is not set
+# Strictly read from environment variables; defaults to SQLite if DB_ENGINE != postgresql
+DB_ENGINE = os.getenv('DB_ENGINE', 'django.db.backends.sqlite3')
 DB_NAME = os.getenv('DB_NAME')
-if DB_NAME and os.getenv('DB_ENGINE') == 'django.db.backends.postgresql':
+
+if DB_ENGINE == 'django.db.backends.postgresql' or os.getenv('DATABASE_URL'):
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
-            'NAME': DB_NAME,
-            'USER': os.getenv('DB_USER', 'postgres'),
-            'PASSWORD': os.getenv('DB_PASSWORD', ''),
+            'NAME': DB_NAME or 'school_saas_dev',
+            'USER': os.getenv('DB_USER', 'school_saas_app'),
+            'PASSWORD': os.getenv('DB_PASSWORD') or os.getenv('DB_APP_PASSWORD', ''),
             'HOST': os.getenv('DB_HOST', '127.0.0.1'),
             'PORT': os.getenv('DB_PORT', '5432'),
+            'ATOMIC_REQUESTS': True,
         }
     }
 else:

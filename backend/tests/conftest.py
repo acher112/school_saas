@@ -20,14 +20,18 @@ def api_client():
 @pytest.fixture
 def school_factory(db):
     """Factory creating isolated School tenant instances."""
-    def create_school(name="Beacon Hall Grammar School", slug="beaconhall", is_active=True):
+    def create_school(name="Beacon Hall Grammar School", slug="beaconhall", is_active=True, **kwargs):
+        contact_email = kwargs.pop('contact_email', f"admin@{slug}.edu.pk")
+        contact_phone = kwargs.pop('contact_phone', "03001234567")
+        city = kwargs.pop('city', "Lahore")
         school = School.objects.create(
             name=name,
             slug=slug,
-            contact_email=f"admin@{slug}.edu.pk",
-            contact_phone="03001234567",
-            city="Lahore",
-            is_active=is_active
+            contact_email=contact_email,
+            contact_phone=contact_phone,
+            city=city,
+            is_active=is_active,
+            **kwargs
         )
         campus = Campus.objects.create(
             school=school,

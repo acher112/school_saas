@@ -17,10 +17,12 @@ def get_rls_sql_for_table(table_name: str) -> str:
     -- Drop existing policy if present
     DROP POLICY IF EXISTS tenant_isolation_policy ON "{table_name}";
 
-    -- Create strict isolation policy matching current session tenant
+    -- Create strict permissive isolation policy with USING and WITH CHECK
     CREATE POLICY tenant_isolation_policy ON "{table_name}"
-        AS RESTRICTIVE
-        USING (school_id = NULLIF(current_setting('app.current_school_id', true), '')::uuid);
+        AS PERMISSIVE
+        FOR ALL
+        USING (school_id = NULLIF(current_setting('app.current_school_id', true), '')::uuid)
+        WITH CHECK (school_id = NULLIF(current_setting('app.current_school_id', true), '')::uuid);
     """
 
 def apply_rls_to_table(table_name: str):

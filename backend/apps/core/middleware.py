@@ -50,7 +50,7 @@ class TenantContextMiddleware:
         # 4. Bind to PostgreSQL RLS session variable if using PostgreSQL
         if connection.vendor == 'postgresql':
             with connection.cursor() as cursor:
-                cursor.execute("SET LOCAL app.current_school_id = %s;", [str(school.id)])
+                cursor.execute("SELECT set_config('app.current_school_id', %s, true);", [str(school.id)])
 
         try:
             response = self.get_response(request)

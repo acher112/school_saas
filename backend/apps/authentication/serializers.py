@@ -95,6 +95,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             'first_name': authenticated_user.first_name,
             'last_name': authenticated_user.last_name,
             'role': authenticated_user.role,  # Strictly from DB
+            'must_change_password': authenticated_user.must_change_password,
             'preferred_language': authenticated_user.preferred_language,
             'school': {
                 'id': str(authenticated_user.school.id),
@@ -159,6 +160,32 @@ class UserSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'username', 'email', 'first_name', 'last_name',
             'role', 'phone_number', 'preferred_language', 'avatar',
+            'must_change_password',
             'school_id', 'school_name', 'school_slug', 'date_joined'
         ]
-        read_only_fields = ['id', 'role', 'school_id']
+        read_only_fields = ['id', 'role', 'school_id', 'must_change_password']
+
+class UserCreateSerializer(serializers.ModelSerializer):
+    """Serializer for school admins to create staff, teacher, and student users."""
+    role = serializers.ChoiceField(choices=[
+        ('headmaster', 'Headmaster / Principal'),
+        ('teacher', 'Teacher'),
+        ('accountant', 'Accountant / Finance'),
+        ('student', 'Student'),
+        ('parent', 'Parent / Guardian'),
+    ])
+
+    class Meta:
+        model = User
+        fields = ['username', 'email', 'role', 'first_name', 'last_name', 'phone_number']
+
+class ChangePasswordSerializer(serializers.Serializer):
+    """Serializer for first-login and regular password updates."""
+    current_password = serializers.CharField(required=True, write_only=True)
+    new_password = serializers.CharField(required=True, min_length=8, write_only=True)
+
+    def validate_new_password(self, value):
+        if len(value) < 8:
+            raise serializers.ValidationError("Password must be at least 8 characters long.")
+        return value
+
