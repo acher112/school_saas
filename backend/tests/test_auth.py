@@ -268,3 +268,35 @@ class TestAuthentication:
         # 2. Protected endpoints without auth return 401 Unauthorized
         assert api_client.get('/api/v1/auth/me/').status_code == 401
         assert api_client.get('/api/v1/core/announcements/').status_code == 401
+
+    def test_cookie_based_refresh_token_and_logout(self, api_client, school_factory, user_factory):
+        """
+        SECURITY REQUIREMENT:
+        Verify that login sets an httpOnly cookie with refresh token,
+        that refresh endpoint accepts the cookie without body,
+        and that logout endpoint clears the cookie.
+        """
+        school = school_factory(name="Cookie School", slug="cookie-school")
+        user = user_factory(username="cookie_user", school=school, password="Password123!")
+
+        # 1. Login and assert cookie is set
+        login_res = api_client.post('/api/v1/auth/login/', {
+            "username": "cookie_user",
+            "password": "Password123!"
+        }, format='json')
+        assert login_res.status_code == 200
+        assert 'refresh_token' in login_res.cookies
+        refresh_cookie = login_res.cookies['refresh_token']
+        assert refresh_cookie['httponly'] is True
+        assert refresh_cookie['samesite'] == 'Lax'
+
+        # 2. Refresh without body - DRF client retains cookies
+        refresh_res = api_client.post('/api/v1/auth/refresh/', {}, format='json')
+        assert refresh_res.status_code == 200
+        assert 'access' in refresh_res.data
+
+        # 3. Logout - cookie is cleared
+        logout_res = api_client.post('/api/v1/auth/logout/')
+        assert logout_res.status_code == 200
+        assert logout_res.cookies['refresh_token'].value == '' or logout_res.cookies['refresh_token']['max-age'] == 0
+

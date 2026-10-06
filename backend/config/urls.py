@@ -3,17 +3,11 @@ Root URL configuration for the School Management SaaS API.
 """
 from django.contrib import admin
 from django.urls import path, include
-from django.http import JsonResponse
-
-def health_check(request):
-    return JsonResponse({
-        "status": "healthy",
-        "service": "school-saas-api",
-        "version": "1.0.0"
-    })
+from apps.core.views import HealthCheckView
 
 urlpatterns = [
-    path('health/', health_check, name='health-check'),
+    path('health/', HealthCheckView.as_view(), name='health-check'),
+    path('api/health/', HealthCheckView.as_view(), name='api-health-check'),
     path('admin/', admin.site.urls),
 
     # Core Tenancy & School Onboarding Endpoints

@@ -1,22 +1,61 @@
 """
-Views for School registration, subdomain availability checks, and tenant-scoped resources.
+Views for School registration, subdomain availability checks, academic sessions,
+role permissions, audit logs, and sample data population.
 """
-from rest_framework import status, generics
+import os
+from rest_framework import status, generics, viewsets
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
-from apps.core.models import School, SchoolAnnouncement
+from django.db import connection
+from django.utils import timezone
+from apps.core.models import (
+    School,
+    AcademicSession,
+    SchoolRolePermission,
+    AuditLog,
+    SchoolAnnouncement
+)
 from apps.core.serializers import (
     SchoolSerializer,
     SchoolSignupSerializer,
+    AcademicSessionSerializer,
+    SchoolRolePermissionSerializer,
+    AuditLogSerializer,
     SchoolAnnouncementSerializer
 )
 from apps.core.permissions import IsTenantMember, IsSchoolAdmin
 from apps.core.context import get_current_school
 
+class HealthCheckView(APIView):
+    """
+    Public health check endpoint for monitoring, uptime checks, and Vercel/Render deployments.
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        db_healthy = True
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT 1")
+        except Exception:
+            db_healthy = False
+
+        return Response({
+            "status": "healthy" if db_healthy else "unhealthy",
+            "service": "school-saas-api",
+            "version": "1.0.0",
+            "database_connected": db_healthy,
+            "database_vendor": connection.vendor,
+            "test_environment": True,
+            "banner": "Test environment. Do not enter real student data.",
+            "timestamp": timezone.now().isoformat()
+        }, status=status.HTTP_200_OK if db_healthy else status.HTTP_503_SERVICE_UNAVAILABLE)
+
 class SchoolSignupView(APIView):
     """
-    Public Endpoint: Onboards a new school, creates admin user, default campus, and issues JWT tokens.
+    Public Endpoint: Onboards a new school, creates admin user, default campus,
+    initial academic session, default permissions, and issues JWT tokens.
     """
     permission_classes = [AllowAny]
 
@@ -50,7 +89,7 @@ class CheckSlugAvailabilityView(APIView):
                 "message": "Subdomain slug parameter is required."
             }, status=status.HTTP_400_BAD_REQUEST)
 
-        is_reserved = slug in ('admin', 'api', 'www', 'app', 'portal', 'dashboard', 'root')
+        is_reserved = slug in ('admin', 'api', 'www', 'app', 'portal', 'dashboard', 'root', 'health', 'public')
         exists = School.objects.filter(slug=slug).exists()
         is_available = not is_reserved and not exists
 
@@ -63,7 +102,7 @@ class CheckSlugAvailabilityView(APIView):
 
 class CurrentSchoolView(APIView):
     """
-    Endpoint: Returns details and dynamic branding for the currently resolved school tenant.
+    Endpoint: Returns details, dynamic branding, and active session for the currently resolved school tenant.
     """
     permission_classes = [AllowAny]
 
@@ -81,21 +120,153 @@ class CurrentSchoolView(APIView):
             "data": serializer.data
         })
 
+class AcademicSessionListCreateView(generics.ListCreateAPIView):
+    """
+    Tenant-Scoped Endpoint: List and create academic sessions for the active school.
+    """
+    serializer_class = AcademicSessionSerializer
+    permission_classes = [IsAuthenticated, IsTenantMember]
+
+    def get_queryset(self):
+        return AcademicSession.objects.all().order_by('-start_date')
+
+    def perform_create(self, serializer):
+        if self.request.user.role not in ('school_admin', 'headmaster', 'superadmin'):
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Only school administrators and headmasters can create academic sessions.")
+        session = serializer.save()
+        AuditLog.objects.create(
+            actor=self.request.user,
+            actor_username=self.request.user.username,
+            actor_role=self.request.user.role,
+            action="ACADEMIC_SESSION_CREATED",
+            resource_type="AcademicSession",
+            resource_id=str(session.id),
+            details={"name": session.name, "is_current": session.is_current}
+        )
+
+class SetCurrentSessionView(APIView):
+    """
+    Sets a specific academic session as the active session for the school.
+    """
+    permission_classes = [IsAuthenticated, IsTenantMember, IsSchoolAdmin]
+
+    def patch(self, request, pk):
+        session = AcademicSession.objects.filter(pk=pk).first()
+        if not session:
+            return Response({"success": False, "message": "Academic session not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        session.is_current = True
+        session.save()
+
+        AuditLog.objects.create(
+            actor=request.user,
+            actor_username=request.user.username,
+            actor_role=request.user.role,
+            action="ACADEMIC_SESSION_ACTIVATED",
+            resource_type="AcademicSession",
+            resource_id=str(session.id),
+            details={"name": session.name}
+        )
+
+        return Response({
+            "success": True,
+            "message": f"Session '{session.name}' is now the active academic session.",
+            "data": AcademicSessionSerializer(session).data
+        })
+
+class SchoolRolePermissionListView(generics.ListAPIView):
+    """
+    List fine-grained permissions per role for the school.
+    """
+    serializer_class = SchoolRolePermissionSerializer
+    permission_classes = [IsAuthenticated, IsTenantMember]
+
+    def get_queryset(self):
+        return SchoolRolePermission.objects.all().order_by('role')
+
+class UpdateRolePermissionView(generics.UpdateAPIView):
+    """
+    Update fine-grained permissions for a role (e.g. grant timetable creation to teachers).
+    """
+    serializer_class = SchoolRolePermissionSerializer
+    permission_classes = [IsAuthenticated, IsTenantMember, IsSchoolAdmin]
+    queryset = SchoolRolePermission.objects.all()
+
+class AuditLogListView(generics.ListAPIView):
+    """
+    View immutable audit trail for the active school tenant.
+    """
+    serializer_class = AuditLogSerializer
+    permission_classes = [IsAuthenticated, IsTenantMember, IsSchoolAdmin]
+
+    def get_queryset(self):
+        return AuditLog.objects.all()[:100]
+
 class SchoolAnnouncementListCreateView(generics.ListCreateAPIView):
     """
-    Tenant-Scoped Resource Endpoint:
-    Uses TenantManager automatically to ensure users only see announcements for their school.
+    Tenant-Scoped Announcement Endpoint.
     """
     serializer_class = SchoolAnnouncementSerializer
     permission_classes = [IsAuthenticated, IsTenantMember]
 
     def get_queryset(self):
-        # Automatically scoped by TenantManager based on current_school context!
         return SchoolAnnouncement.objects.filter(is_published=True)
 
     def perform_create(self, serializer):
-        # Only School Admin or Principal can create announcements
         if self.request.user.role not in ('school_admin', 'headmaster', 'superadmin'):
             from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied("Only school administrators can publish announcements.")
         serializer.save()
+
+class LoadSampleDataView(APIView):
+    """
+    Loads initial demonstration sample data for THAT school only.
+    Clearly marked, safe to run once, and strictly scoped to active tenant.
+    """
+    permission_classes = [IsAuthenticated, IsTenantMember, IsSchoolAdmin]
+
+    def post(self, request):
+        school = get_current_school()
+        if not school:
+            return Response({"success": False, "message": "Tenant context required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if school.has_sample_data:
+            return Response({
+                "success": False,
+                "message": "Sample data has already been populated for this school."
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Create sample announcements
+        SchoolAnnouncement.objects.create(
+            title="Welcome to the New Academic Session 2026-2027",
+            content="We are thrilled to welcome our students, faculty, and parents to the new academic term. Please review the updated class routines and academic calendar.",
+            is_published=True
+        )
+        SchoolAnnouncement.objects.create(
+            title="Parent-Teacher Orientation Conference",
+            content="The annual orientation conference will be held next Saturday at 10:00 AM in the main auditorium.",
+            is_published=True
+        )
+
+        school.has_sample_data = True
+        school.save(update_fields=['has_sample_data'])
+
+        AuditLog.objects.create(
+            actor=request.user,
+            actor_username=request.user.username,
+            actor_role=request.user.role,
+            action="SAMPLE_DATA_LOADED",
+            resource_type="School",
+            resource_id=str(school.id),
+            details={"notices_created": 2}
+        )
+
+        return Response({
+            "success": True,
+            "message": "Sample demonstration data successfully loaded for your school.",
+            "data": {
+                "notices_created": 2,
+                "school": school.name
+            }
+        })

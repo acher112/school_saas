@@ -190,3 +190,47 @@ class TestTenantIsolation:
         clear_current_school()
         total_count = SchoolAnnouncement.all_objects.count()
         assert total_count >= 2
+
+    def test_interleaved_requests_never_leak_tenant_context(
+        self, api_client, school_factory, user_factory, tenant_context
+    ):
+        """
+        Verify that sequential, interleaved requests from different school tenants
+        never leak thread-local tenant context, cached querysets, or unauthorized data.
+        """
+        school_alpha = school_factory(name="School Alpha", slug="alpha-req")
+        school_beta = school_factory(name="School Beta", slug="beta-req")
+
+        tenant_context(school_alpha)
+        SchoolAnnouncement.objects.create(title="Alpha Unique Confidential Notice", content="Alpha only")
+
+        tenant_context(school_beta)
+        SchoolAnnouncement.objects.create(title="Beta Unique Confidential Notice", content="Beta only")
+
+        user_alpha = user_factory(username="admin_alpha_req", role=UserRole.SCHOOL_ADMIN, school=school_alpha)
+        user_beta = user_factory(username="admin_beta_req", role=UserRole.SCHOOL_ADMIN, school=school_beta)
+
+        # Step 1: Alpha request
+        api_client.force_authenticate(user=user_alpha)
+        res_a1 = api_client.get('/api/v1/core/announcements/', HTTP_X_SCHOOL_SLUG='alpha-req')
+        assert res_a1.status_code == 200
+        titles_a1 = [n['title'] for n in res_a1.data]
+        assert "Alpha Unique Confidential Notice" in titles_a1
+        assert "Beta Unique Confidential Notice" not in titles_a1
+
+        # Step 2: Beta request (interleaved)
+        api_client.force_authenticate(user=user_beta)
+        res_b1 = api_client.get('/api/v1/core/announcements/', HTTP_X_SCHOOL_SLUG='beta-req')
+        assert res_b1.status_code == 200
+        titles_b1 = [n['title'] for n in res_b1.data]
+        assert "Beta Unique Confidential Notice" in titles_b1
+        assert "Alpha Unique Confidential Notice" not in titles_b1
+
+        # Step 3: Second Alpha request immediately following Beta request
+        api_client.force_authenticate(user=user_alpha)
+        res_a2 = api_client.get('/api/v1/core/announcements/', HTTP_X_SCHOOL_SLUG='alpha-req')
+        assert res_a2.status_code == 200
+        titles_a2 = [n['title'] for n in res_a2.data]
+        assert "Alpha Unique Confidential Notice" in titles_a2
+        assert "Beta Unique Confidential Notice" not in titles_a2
+

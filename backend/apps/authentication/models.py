@@ -1,6 +1,7 @@
 """
 Custom User model with role-based attributes and tenant association.
-Includes IP-aware LoginAttempt model to prevent denial-of-service lockouts against real users.
+Includes IP-aware LoginAttempt model to prevent denial-of-service lockouts against real users,
+and first-login temporary password enforcement.
 """
 import uuid
 from datetime import timedelta
@@ -47,6 +48,13 @@ class User(AbstractUser):
         help_text="Preferred language code for UI and notifications (en, ur)."
     )
     avatar = models.URLField(blank=True, null=True)
+
+    # Temporary password & first-login change enforcement
+    must_change_password = models.BooleanField(
+        default=False,
+        help_text="Requires user to set a new password on their first login."
+    )
+    temporary_password_created_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ['username']

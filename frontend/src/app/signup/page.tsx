@@ -23,6 +23,8 @@ export default function SignupPage() {
     city: "Lahore",
     brand_primary_color: "#2563EB",
     brand_accent_color: "#F59E0B",
+    session_name: "2026-2027",
+    invite_code: "",
     admin_username: "admin_beacon",
     admin_email: "admin@beaconhall.edu.pk",
     admin_password: "Password123!",
@@ -40,8 +42,8 @@ export default function SignupPage() {
   const handleNextStep = () => {
     setErrorMsg("");
     if (step === 1) {
-      if (!formData.school_name || !formData.slug || !formData.contact_email) {
-        setErrorMsg("Please fill in all required school details.");
+      if (!formData.school_name || !formData.slug || !formData.contact_email || !formData.contact_phone) {
+        setErrorMsg("Please fill in all required institution details.");
         return;
       }
     }
@@ -70,13 +72,13 @@ export default function SignupPage() {
   return (
     <div
       dir={isRTL ? "rtl" : "ltr"}
-      className="flex-1 flex flex-col justify-between p-4 sm:p-6 lg:p-8"
+      className="flex-1 flex flex-col justify-between p-4 sm:p-6 lg:p-8 min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100"
     >
       {/* Header */}
       <div className="flex items-center justify-between max-w-xl w-full mx-auto pb-4">
         <Link href="/" className="flex items-center space-x-2 rtl:space-x-reverse font-bold text-sm text-slate-800 dark:text-slate-100">
-          <span>🎓</span>
-          <span>{t.appName}</span>
+          <span className="text-xl">🎓</span>
+          <span className="text-base font-extrabold">{t.appName}</span>
         </Link>
         <div className="flex items-center space-x-2 rtl:space-x-reverse">
           <LanguageToggle currentLang={lang} onToggle={setLang} />
@@ -92,16 +94,26 @@ export default function SignupPage() {
               ✓
             </div>
             <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
-              {formData.school_name} Activated!
+              {formData.school_name} Successfully Activated!
             </h2>
-            <p className="text-xs text-slate-500">
-              Your private cloud portal is online at: <br />
-              <strong className="text-brand font-mono text-sm">{formData.slug}.myschoolsaas.com</strong>
-            </p>
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-2 text-left rtl:text-right text-xs">
+              <div>
+                <span className="text-slate-400">Portal Subdomain:</span>{" "}
+                <strong className="text-blue-600 font-mono text-sm">{formData.slug}.myschoolsaas.com</strong>
+              </div>
+              <div>
+                <span className="text-slate-400">Administrator:</span>{" "}
+                <strong className="font-mono">{formData.admin_username}</strong> ({formData.admin_email})
+              </div>
+              <div>
+                <span className="text-slate-400">Academic Session:</span>{" "}
+                <span className="font-semibold">{formData.session_name}</span>
+              </div>
+            </div>
             <div className="pt-4">
               <Link
                 href="/login"
-                className="inline-block px-6 py-3 rounded-xl bg-brand hover:bg-brand-hover text-white font-semibold text-xs transition"
+                className="inline-block px-8 py-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs transition shadow-md shadow-blue-500/20"
               >
                 Proceed to Admin Login →
               </Link>
@@ -120,18 +132,18 @@ export default function SignupPage() {
 
             {/* Step Indicators */}
             <div className="flex items-center justify-between max-w-xs mx-auto text-xs font-semibold">
-              <div className={`flex items-center space-x-1 rtl:space-x-reverse ${step >= 1 ? 'text-brand' : 'text-slate-400'}`}>
-                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${step >= 1 ? 'bg-brand text-white' : 'bg-slate-200 text-slate-600'}`}>1</span>
+              <div className={`flex items-center space-x-1 rtl:space-x-reverse ${step >= 1 ? 'text-blue-600' : 'text-slate-400'}`}>
+                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${step >= 1 ? 'bg-blue-600 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-600'}`}>1</span>
                 <span>{t.signup.step1}</span>
               </div>
               <div className="h-0.5 w-6 bg-slate-200 dark:bg-slate-800"></div>
-              <div className={`flex items-center space-x-1 rtl:space-x-reverse ${step >= 2 ? 'text-brand' : 'text-slate-400'}`}>
-                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${step >= 2 ? 'bg-brand text-white' : 'bg-slate-200 text-slate-600'}`}>2</span>
+              <div className={`flex items-center space-x-1 rtl:space-x-reverse ${step >= 2 ? 'text-blue-600' : 'text-slate-400'}`}>
+                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${step >= 2 ? 'bg-blue-600 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-600'}`}>2</span>
                 <span>{t.signup.step2}</span>
               </div>
               <div className="h-0.5 w-6 bg-slate-200 dark:bg-slate-800"></div>
-              <div className={`flex items-center space-x-1 rtl:space-x-reverse ${step >= 3 ? 'text-brand' : 'text-slate-400'}`}>
-                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${step >= 3 ? 'bg-brand text-white' : 'bg-slate-200 text-slate-600'}`}>3</span>
+              <div className={`flex items-center space-x-1 rtl:space-x-reverse ${step >= 3 ? 'text-blue-600' : 'text-slate-400'}`}>
+                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${step >= 3 ? 'bg-blue-600 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-600'}`}>3</span>
                 <span>{t.signup.step3}</span>
               </div>
             </div>
@@ -153,7 +165,7 @@ export default function SignupPage() {
                       required
                       value={formData.school_name}
                       onChange={(e) => handleInputChange('school_name', e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:ring-2 focus:ring-brand"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:ring-2 focus:ring-blue-600"
                     />
                   </div>
 
@@ -182,7 +194,7 @@ export default function SignupPage() {
                         required
                         value={formData.contact_email}
                         onChange={(e) => handleInputChange('contact_email', e.target.value)}
-                        className="w-full px-3.5 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:ring-2 focus:ring-brand"
+                        className="w-full px-3.5 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:ring-2 focus:ring-blue-600"
                       />
                     </div>
                     <div>
@@ -192,7 +204,7 @@ export default function SignupPage() {
                         required
                         value={formData.contact_phone}
                         onChange={(e) => handleInputChange('contact_phone', e.target.value)}
-                        className="w-full px-3.5 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:ring-2 focus:ring-brand"
+                        className="w-full px-3.5 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:ring-2 focus:ring-blue-600"
                       />
                     </div>
                   </div>
@@ -208,7 +220,7 @@ export default function SignupPage() {
                       type="text"
                       value={formData.city}
                       onChange={(e) => handleInputChange('city', e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:ring-2 focus:ring-brand"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:ring-2 focus:ring-blue-600"
                     />
                   </div>
 
@@ -236,16 +248,37 @@ export default function SignupPage() {
                       </div>
                       <div>
                         <h4 className="text-sm font-bold leading-tight">{formData.school_name || 'School Name'}</h4>
-                        <p className="text-[11px] text-slate-400">{formData.city || 'City'}, Pakistan</p>
+                        <p className="text-[11px] text-slate-400">{formData.city || 'Lahore'}, Pakistan</p>
                       </div>
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* STEP 3: Administrator Credentials */}
+              {/* STEP 3: Administrator Credentials & Initial Academic Session */}
               {step === 3 && (
                 <div className="space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium mb-1">First Name</label>
+                      <input
+                        type="text"
+                        value={formData.admin_first_name}
+                        onChange={(e) => handleInputChange('admin_first_name', e.target.value)}
+                        className="w-full px-3.5 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:ring-2 focus:ring-blue-600"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium mb-1">Last Name</label>
+                      <input
+                        type="text"
+                        value={formData.admin_last_name}
+                        onChange={(e) => handleInputChange('admin_last_name', e.target.value)}
+                        className="w-full px-3.5 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:ring-2 focus:ring-blue-600"
+                      />
+                    </div>
+                  </div>
+
                   <div>
                     <label className="block text-xs font-medium mb-1">{t.signup.adminUsername} *</label>
                     <input
@@ -253,7 +286,7 @@ export default function SignupPage() {
                       required
                       value={formData.admin_username}
                       onChange={(e) => handleInputChange('admin_username', e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:ring-2 focus:ring-brand"
+                      className="w-full px-3.5 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:ring-2 focus:ring-blue-600"
                     />
                   </div>
 
@@ -264,7 +297,7 @@ export default function SignupPage() {
                       required
                       value={formData.admin_email}
                       onChange={(e) => handleInputChange('admin_email', e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:ring-2 focus:ring-brand"
+                      className="w-full px-3.5 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:ring-2 focus:ring-blue-600"
                     />
                   </div>
 
@@ -276,13 +309,36 @@ export default function SignupPage() {
                       minLength={8}
                       value={formData.admin_password}
                       onChange={(e) => handleInputChange('admin_password', e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:ring-2 focus:ring-brand"
+                      className="w-full px-3.5 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:ring-2 focus:ring-blue-600"
                     />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                    <div>
+                      <label className="block text-xs font-medium mb-1">{t.signup.academicSession} *</label>
+                      <input
+                        type="text"
+                        required
+                        value={formData.session_name}
+                        onChange={(e) => handleInputChange('session_name', e.target.value)}
+                        className="w-full px-3.5 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:ring-2 focus:ring-blue-600"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium mb-1">{t.signup.inviteCode}</label>
+                      <input
+                        type="text"
+                        value={formData.invite_code}
+                        placeholder="Optional"
+                        onChange={(e) => handleInputChange('invite_code', e.target.value)}
+                        className="w-full px-3.5 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:ring-2 focus:ring-blue-600"
+                      />
+                    </div>
                   </div>
                 </div>
               )}
 
-              {/* Action Buttons (Mobile reachable) */}
+              {/* Action Buttons */}
               <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800">
                 {step > 1 ? (
                   <button
@@ -293,7 +349,7 @@ export default function SignupPage() {
                     ← Back
                   </button>
                 ) : (
-                  <Link href="/login" className="text-xs text-brand hover:underline">
+                  <Link href="/login" className="text-xs text-blue-600 hover:underline">
                     {t.signup.loginLink}
                   </Link>
                 )}
@@ -301,7 +357,7 @@ export default function SignupPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="px-6 py-2.5 rounded-xl bg-brand hover:bg-brand-hover text-white font-semibold text-xs shadow-md shadow-brand/20 transition disabled:opacity-50"
+                  className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-md shadow-blue-500/20 transition disabled:opacity-50"
                 >
                   {loading ? "Activating Portal..." : (step === 3 ? t.signup.submitButton : "Next Step →")}
                 </button>
