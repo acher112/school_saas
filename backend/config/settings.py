@@ -260,8 +260,11 @@ SIMPLE_JWT = {
 # CORS Configuration for Next.js Frontend
 CORS_ALLOWED_ORIGINS = [
     origin.strip()
-    for origin in os.getenv('CORS_ALLOWED_ORIGINS', 'http://localhost:3000,http://127.0.0.1:3000').split(',')
+    for origin in os.getenv('CORS_ALLOWED_ORIGINS', 'http://localhost:3000,http://127.0.0.1:3000,https://school-saas-ruddy.vercel.app').split(',')
     if origin.strip()
+]
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https://.*\.vercel\.app$",
 ]
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_HEADERS = [
@@ -280,7 +283,7 @@ CORS_ALLOW_HEADERS = [
 # CSRF Trusted Origins (Required for HTTPS and cross-origin admin/API requests)
 CSRF_TRUSTED_ORIGINS = [
     origin.strip()
-    for origin in os.getenv('CSRF_TRUSTED_ORIGINS', 'http://localhost:3000,http://127.0.0.1:3000').split(',')
+    for origin in os.getenv('CSRF_TRUSTED_ORIGINS', 'http://localhost:3000,http://127.0.0.1:3000,https://school-saas-ruddy.vercel.app,https://*.vercel.app').split(',')
     if origin.strip()
 ]
 
