@@ -7,7 +7,8 @@ import secrets
 import logging
 from datetime import timedelta
 from django.conf import settings
-from django.db import transaction
+from django.db import transaction, connection
+from apps.core.context import set_current_school
 from django.utils import timezone
 from django.contrib.auth.hashers import make_password
 from rest_framework import status
@@ -219,6 +220,11 @@ class SchoolSignupWizardView(APIView):
                 terms_version=payload.get('terms_version', 'v1.0'),
                 terms_accepted_at=timezone.now(),
             )
+
+            if connection.vendor == 'postgresql':
+                with connection.cursor() as cursor:
+                    cursor.execute("SELECT set_config('app.current_school_id', %s, true);", [str(school.id)])
+            set_current_school(school)
 
             campus = Campus.objects.create(
                 school=school,

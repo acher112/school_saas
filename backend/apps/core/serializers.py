@@ -4,7 +4,8 @@ Serializers for School tenancy, campuses, academic sessions, role permissions, a
 import os
 from datetime import date
 from rest_framework import serializers
-from django.db import transaction
+from django.db import transaction, connection
+from apps.core.context import set_current_school
 from django.utils import timezone
 from apps.core.models import (
     School,
@@ -155,6 +156,11 @@ class SchoolSignupSerializer(serializers.Serializer):
                 brand_accent_color=validated_data.get('brand_accent_color', '#F59E0B'),
                 is_active=True
             )
+
+            if connection.vendor == 'postgresql':
+                with connection.cursor() as cursor:
+                    cursor.execute("SELECT set_config('app.current_school_id', %s, true);", [str(school.id)])
+            set_current_school(school)
 
             # 2. Create Default Main Campus
             campus = Campus.objects.create(
