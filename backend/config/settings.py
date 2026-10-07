@@ -5,6 +5,7 @@ DEBUG defaults to False.
 SECRET_KEY has zero insecure fallbacks outside the pytest test runner.
 """
 import os
+import urllib.parse
 from pathlib import Path
 from datetime import timedelta
 from django.core.exceptions import ImproperlyConfigured
@@ -110,20 +111,63 @@ DB_NAME = os.getenv('DB_NAME')
 
 if DB_ENGINE == 'django.db.backends.postgresql' or os.getenv('DATABASE_URL'):
     run_as_owner = os.getenv('RUN_AS_OWNER', '').lower() in ('true', '1', 'yes')
-    db_user = os.getenv('DB_OWNER_USER', 'school_saas_owner') if run_as_owner else os.getenv('DB_USER', os.getenv('DB_APP_USER', 'school_saas_app'))
-    db_password = os.getenv('DB_OWNER_PASSWORD', '') if run_as_owner else (os.getenv('DB_PASSWORD') or os.getenv('DB_APP_PASSWORD', ''))
-    platform_user = os.getenv('DB_PLATFORM_USER', 'school_saas_platform')
-    platform_password = os.getenv('DB_PLATFORM_PASSWORD', '')
-    has_platform_config = bool(platform_password or os.getenv('PLATFORM_DATABASE_URL'))
+    raw_db_url = (os.getenv('MIGRATION_DATABASE_URL') if run_as_owner else None) or os.getenv('DATABASE_URL')
+
+    if raw_db_url:
+        parsed_db = urllib.parse.urlparse(raw_db_url)
+        db_name = parsed_db.path.lstrip('/') or (DB_NAME or 'school_saas_dev')
+        db_user = urllib.parse.unquote(parsed_db.username or '')
+        db_password = urllib.parse.unquote(parsed_db.password or '')
+        db_host = parsed_db.hostname or '127.0.0.1'
+        db_port = str(parsed_db.port or 5432)
+        db_qs = urllib.parse.parse_qs(parsed_db.query)
+        db_options = {}
+        if 'sslmode' in db_qs:
+            db_options['sslmode'] = db_qs['sslmode'][0]
+        if 'channel_binding' in db_qs:
+            db_options['channel_binding'] = db_qs['channel_binding'][0]
+    else:
+        db_name = DB_NAME or 'school_saas_dev'
+        db_user = os.getenv('DB_OWNER_USER', 'school_saas_owner') if run_as_owner else os.getenv('DB_USER', os.getenv('DB_APP_USER', 'school_saas_app'))
+        db_password = os.getenv('DB_OWNER_PASSWORD', '') if run_as_owner else (os.getenv('DB_PASSWORD') or os.getenv('DB_APP_PASSWORD', ''))
+        db_host = os.getenv('DB_HOST', '127.0.0.1')
+        db_port = os.getenv('DB_PORT', '55432')
+        db_options = {}
+
+    platform_url = os.getenv('PLATFORM_DATABASE_URL')
+    if platform_url:
+        parsed_plat = urllib.parse.urlparse(platform_url)
+        plat_name = parsed_plat.path.lstrip('/') or db_name
+        plat_user = urllib.parse.unquote(parsed_plat.username or '')
+        plat_password = urllib.parse.unquote(parsed_plat.password or '')
+        plat_host = parsed_plat.hostname or db_host
+        plat_port = str(parsed_plat.port or 5432)
+        plat_qs = urllib.parse.parse_qs(parsed_plat.query)
+        plat_options = {}
+        if 'sslmode' in plat_qs:
+            plat_options['sslmode'] = plat_qs['sslmode'][0]
+        if 'channel_binding' in plat_qs:
+            plat_options['channel_binding'] = plat_qs['channel_binding'][0]
+    else:
+        platform_user = os.getenv('DB_PLATFORM_USER', 'school_saas_platform')
+        platform_password = os.getenv('DB_PLATFORM_PASSWORD', '')
+        has_platform_config = bool(platform_password)
+        plat_name = db_name
+        plat_user = platform_user if has_platform_config else db_user
+        plat_password = platform_password if has_platform_config else db_password
+        plat_host = db_host
+        plat_port = db_port
+        plat_options = db_options
 
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
-            'NAME': DB_NAME or 'school_saas_dev',
+            'NAME': db_name,
             'USER': db_user,
             'PASSWORD': db_password,
-            'HOST': os.getenv('DB_HOST', '127.0.0.1'),
-            'PORT': os.getenv('DB_PORT', '55432'),
+            'HOST': db_host,
+            'PORT': db_port,
+            'OPTIONS': db_options,
             'ATOMIC_REQUESTS': True,
             'TEST': {
                 'NAME': os.getenv('DB_TEST_NAME', 'school_saas_test'),
@@ -131,11 +175,12 @@ if DB_ENGINE == 'django.db.backends.postgresql' or os.getenv('DATABASE_URL'):
         },
         'platform': {
             'ENGINE': 'django.db.backends.postgresql',
-            'NAME': DB_NAME or 'school_saas_dev',
-            'USER': platform_user if has_platform_config else db_user,
-            'PASSWORD': platform_password if has_platform_config else db_password,
-            'HOST': os.getenv('DB_HOST', '127.0.0.1'),
-            'PORT': os.getenv('DB_PORT', '55432'),
+            'NAME': plat_name,
+            'USER': plat_user,
+            'PASSWORD': plat_password,
+            'HOST': plat_host,
+            'PORT': plat_port,
+            'OPTIONS': plat_options,
             'ATOMIC_REQUESTS': False,
             'TEST': {
                 'MIRROR': 'default',

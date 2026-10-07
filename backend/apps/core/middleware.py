@@ -20,7 +20,10 @@ class TenantContextMiddleware:
         if (
             path.startswith('/admin/') or
             path.startswith('/health/') or
-            path.startswith('/api/v1/core/signup/')
+            path.startswith('/api/health/') or
+            path.startswith('/api/v1/core/signup/') or
+            path.startswith('/api/v1/core/check-slug/') or
+            path.startswith('/api/v1/core/schools/check-slug/')
         ):
             clear_current_school()
             request.school = None
