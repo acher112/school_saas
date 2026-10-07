@@ -8,7 +8,7 @@ from django.core.management import call_command
 from apps.core.models import School, Campus, AcademicSession, SchoolRolePermission, SchoolAnnouncement
 from apps.authentication.models import User
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_seed_demo_command():
     out = StringIO()
     call_command('seed_demo', stdout=out)

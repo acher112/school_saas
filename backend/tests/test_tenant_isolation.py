@@ -175,6 +175,7 @@ class TestTenantIsolation:
         )
         assert post_response.status_code == 403
 
+    @pytest.mark.django_db(transaction=True)
     def test_global_manager_allows_superadmin_queries(self, school_factory, tenant_context):
         """Verify that BaseTenantModel.all_objects allows cross-tenant administrative inspection."""
         school_a = school_factory(name="School Alpha", slug="alpha")

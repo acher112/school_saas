@@ -73,7 +73,8 @@ class SchoolSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'is_active', 'is_demo_school', 'has_sample_data', 'created_at']
 
     def get_current_session(self, obj):
-        session = AcademicSession.all_objects.filter(school=obj, is_current=True).first()
+        db = obj._state.db or 'default'
+        session = AcademicSession._unscoped.using(db).filter(school=obj, is_current=True).first()
         return AcademicSessionSerializer(session).data if session else None
 
 class SchoolAnnouncementSerializer(serializers.ModelSerializer):

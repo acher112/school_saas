@@ -22,6 +22,9 @@ DB_PASSWORD = os.getenv('DB_APP_PASSWORD', '')
 DB_HOST = os.getenv('DB_HOST', '127.0.0.1')
 DB_PORT = os.getenv('DB_PORT', '55432')
 
+PLATFORM_USER = os.getenv('DB_PLATFORM_USER', 'school_saas_platform')
+PLATFORM_PASSWORD = os.getenv('DB_PLATFORM_PASSWORD', '')
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
@@ -34,5 +37,17 @@ DATABASES = {
         'TEST': {
             'NAME': DB_NAME,
         },
-    }
+    },
+    'platform': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': DB_NAME,
+        'USER': PLATFORM_USER,
+        'PASSWORD': PLATFORM_PASSWORD,
+        'HOST': DB_HOST,
+        'PORT': DB_PORT,
+        'ATOMIC_REQUESTS': False,
+        'TEST': {
+            'MIRROR': 'default',
+        },
+    },
 }

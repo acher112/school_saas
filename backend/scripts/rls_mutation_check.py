@@ -43,83 +43,117 @@ def run_mutation_check():
         host=host, port=port, dbname=dbname,
         user="school_saas_owner", password=owner_pwd, autocommit=True
     )
+    app_conn = None
 
-    with owner_conn.cursor() as cur:
-        # Create test schools if not existing
-        cur.execute("""
-            INSERT INTO core_school (id, name, slug, contact_email, contact_phone, address, city, country, currency, timezone, brand_primary_color, brand_accent_color, is_active, is_demo_school, has_sample_data, created_at, updated_at)
-            VALUES 
-                ('11111111-1111-1111-1111-111111111111', 'Mutation School A', 'mut-a', 'a@test.com', '111', '', 'Lahore', 'Pakistan', 'PKR', 'Asia/Karachi', '#000000', '#000000', true, false, false, NOW(), NOW()),
-                ('22222222-2222-2222-2222-222222222222', 'Mutation School B', 'mut-b', 'b@test.com', '222', '', 'Lahore', 'Pakistan', 'PKR', 'Asia/Karachi', '#000000', '#000000', true, false, false, NOW(), NOW())
-            ON CONFLICT (slug) DO NOTHING;
-        """)
+    try:
+        with owner_conn.cursor() as cur:
+            # Create test schools if not existing
+            cur.execute("""
+                INSERT INTO core_school (
+                    id, name, slug, contact_email, contact_phone, address, city, country, currency, timezone,
+                    brand_primary_color, brand_accent_color, is_active, is_demo_school, has_sample_data,
+                    school_type, board, levels, gender_type, medium_of_instruction, province, status, allow_google_login, terms_version,
+                    created_at, updated_at
+                )
+                VALUES 
+                    ('11111111-1111-1111-1111-111111111111', 'Mutation School A', 'mut-a', 'a@test.com', '111', '', 'Lahore', 'Pakistan', 'PKR', 'Asia/Karachi', '#000000', '#000000', true, false, false, 'private', 'bise_lahore', 'playgroup_to_matric', 'co_education', 'english', 'Punjab', 'active', true, 'v1.0', NOW(), NOW()),
+                    ('22222222-2222-2222-2222-222222222222', 'Mutation School B', 'mut-b', 'b@test.com', '222', '', 'Lahore', 'Pakistan', 'PKR', 'Asia/Karachi', '#000000', '#000000', true, false, false, 'private', 'bise_lahore', 'playgroup_to_matric', 'co_education', 'english', 'Punjab', 'active', true, 'v1.0', NOW(), NOW())
+                ON CONFLICT (id) DO UPDATE SET slug = EXCLUDED.slug;
+            """)
 
-        # Insert announcements
-        cur.execute("""
-            INSERT INTO core_schoolannouncement (id, school_id, title, content, is_published, created_at, updated_at)
-            VALUES 
-                ('33333333-3333-3333-3333-333333333333', '11111111-1111-1111-1111-111111111111', 'A Secret', 'A Content', true, NOW(), NOW()),
-                ('44444444-4444-4444-4444-444444444444', '22222222-2222-2222-2222-222222222222', 'B Secret', 'B Content', true, NOW(), NOW())
-            ON CONFLICT (id) DO NOTHING;
-        """)
+            # Insert announcements setting tenant context per school
+            cur.execute("SELECT set_config('app.current_school_id', '11111111-1111-1111-1111-111111111111', false);")
+            cur.execute("""
+                INSERT INTO core_schoolannouncement (id, school_id, title, content, is_published, created_at, updated_at)
+                VALUES ('33333333-3333-3333-3333-333333333333', '11111111-1111-1111-1111-111111111111', 'A Secret', 'A Content', true, NOW(), NOW())
+                ON CONFLICT (id) DO UPDATE SET title = EXCLUDED.title;
+            """)
 
-        # Ensure RLS is active
-        cur.execute("ALTER TABLE core_schoolannouncement ENABLE ROW LEVEL SECURITY;")
-        cur.execute("ALTER TABLE core_schoolannouncement FORCE ROW LEVEL SECURITY;")
+            cur.execute("SELECT set_config('app.current_school_id', '22222222-2222-2222-2222-222222222222', false);")
+            cur.execute("""
+                INSERT INTO core_schoolannouncement (id, school_id, title, content, is_published, created_at, updated_at)
+                VALUES ('44444444-4444-4444-4444-444444444444', '22222222-2222-2222-2222-222222222222', 'B Secret', 'B Content', true, NOW(), NOW())
+                ON CONFLICT (id) DO UPDATE SET title = EXCLUDED.title;
+            """)
+            cur.execute("SELECT set_config('app.current_school_id', '', false);")
 
-    # 2. Connect as restricted app role
-    app_conn = psycopg.connect(
-        host=host, port=port, dbname=dbname,
-        user="school_saas_app", password=app_pwd
-    )
+            # Ensure RLS is active and forced
+            cur.execute("ALTER TABLE core_schoolannouncement ENABLE ROW LEVEL SECURITY;")
+            cur.execute("ALTER TABLE core_schoolannouncement FORCE ROW LEVEL SECURITY;")
 
-    print("\nStep 1: Baseline Check with RLS ENABLED")
-    with app_conn.cursor() as cur:
-        # Context = School A
-        cur.execute("SELECT set_config('app.current_school_id', '11111111-1111-1111-1111-111111111111', true);")
-        cur.execute("SELECT title FROM core_schoolannouncement;")
-        rows = [r[0] for r in cur.fetchall()]
-        print(f"  Query as School A returned: {rows}")
-        assert 'A Secret' in rows, "Expected School A secret to be returned"
-        assert 'B Secret' not in rows, "Security failure: School B secret leaked!"
-        print("  ✓ PASS: School B's rows are completely hidden under RLS.")
-    app_conn.rollback()
+        # 2. Connect as restricted app role
+        app_conn = psycopg.connect(
+            host=host, port=port, dbname=dbname,
+            user="school_saas_app", password=app_pwd
+        )
 
-    print("\nStep 2: Mutating Security (Owner temporarily DISABLES RLS)...")
-    with owner_conn.cursor() as cur:
-        cur.execute("ALTER TABLE core_schoolannouncement DISABLE ROW LEVEL SECURITY;")
-    print("  RLS has been disabled by table owner.")
+        print("\nStep 1: Baseline Check with RLS ENABLED")
+        with app_conn.cursor() as cur:
+            # Context = School A
+            cur.execute("SELECT set_config('app.current_school_id', '11111111-1111-1111-1111-111111111111', true);")
+            cur.execute("SELECT title FROM core_schoolannouncement;")
+            rows = [r[0] for r in cur.fetchall()]
+            print(f"  Query as School A returned: {rows}")
+            assert 'A Secret' in rows, "Expected School A secret to be returned"
+            assert 'B Secret' not in rows, "Security failure: School B secret leaked!"
+            print("  [OK] PASS: School B's rows are completely hidden under RLS.")
+        app_conn.rollback()
 
-    print("\nStep 3: Verification that Mutation FAILS tenant isolation")
-    with app_conn.cursor() as cur:
-        # Context = School A
-        cur.execute("SELECT set_config('app.current_school_id', '11111111-1111-1111-1111-111111111111', true);")
-        cur.execute("SELECT title FROM core_schoolannouncement;")
-        leaked_rows = [r[0] for r in cur.fetchall()]
-        print(f"  Query as School A without RLS returned: {leaked_rows}")
-        assert 'B Secret' in leaked_rows, "Expected mutation failure (leak), but row was not returned"
-        print("  ✓ CONFIRMED: Without RLS, School A was able to read School B's private row (MUTATION VERIFIED).")
-    app_conn.rollback()
+        print("\nStep 2: Mutating Security (Owner temporarily DISABLES RLS)...")
+        with owner_conn.cursor() as cur:
+            cur.execute("ALTER TABLE core_schoolannouncement DISABLE ROW LEVEL SECURITY;")
+        print("  RLS has been disabled by table owner.")
 
-    print("\nStep 4: Restoring and Re-enforcing RLS (FORCE ROW LEVEL SECURITY)...")
-    with owner_conn.cursor() as cur:
-        cur.execute("ALTER TABLE core_schoolannouncement ENABLE ROW LEVEL SECURITY;")
-        cur.execute("ALTER TABLE core_schoolannouncement FORCE ROW LEVEL SECURITY;")
-    print("  RLS restored.")
+        print("\nStep 3: Verification that Mutation FAILS tenant isolation")
+        with app_conn.cursor() as cur:
+            # Context = School A
+            cur.execute("SELECT set_config('app.current_school_id', '11111111-1111-1111-1111-111111111111', true);")
+            cur.execute("SELECT title FROM core_schoolannouncement;")
+            leaked_rows = [r[0] for r in cur.fetchall()]
+            print(f"  Query as School A without RLS returned: {leaked_rows}")
+            assert 'B Secret' in leaked_rows, "Expected mutation failure (leak), but row was not returned"
+            print("  [OK] CONFIRMED: Without RLS, School A was able to read School B's private row (MUTATION VERIFIED).")
+        app_conn.rollback()
 
-    print("\nStep 5: Verification that Tenant Isolation is 100% Restored")
-    with app_conn.cursor() as cur:
-        cur.execute("SELECT set_config('app.current_school_id', '11111111-1111-1111-1111-111111111111', true);")
-        cur.execute("SELECT title FROM core_schoolannouncement;")
-        restored_rows = [r[0] for r in cur.fetchall()]
-        print(f"  Query as School A returned: {restored_rows}")
-        assert 'A Secret' in restored_rows
-        assert 'B Secret' not in restored_rows
-        print("  ✓ PASS: Tenant isolation is fully restored and proven effective.")
-    app_conn.rollback()
+        print("\nStep 4: Restoring and Re-enforcing RLS (FORCE ROW LEVEL SECURITY)...")
+        with owner_conn.cursor() as cur:
+            cur.execute("ALTER TABLE core_schoolannouncement ENABLE ROW LEVEL SECURITY;")
+            cur.execute("ALTER TABLE core_schoolannouncement FORCE ROW LEVEL SECURITY;")
+        print("  RLS restored.")
 
-    owner_conn.close()
-    app_conn.close()
+        print("\nStep 5: Verification that Tenant Isolation is 100% Restored")
+        with app_conn.cursor() as cur:
+            cur.execute("SELECT set_config('app.current_school_id', '11111111-1111-1111-1111-111111111111', true);")
+            cur.execute("SELECT title FROM core_schoolannouncement;")
+            restored_rows = [r[0] for r in cur.fetchall()]
+            print(f"  Query as School A returned: {restored_rows}")
+            assert 'A Secret' in restored_rows
+            assert 'B Secret' not in restored_rows
+            print("  [OK] PASS: Tenant isolation is fully restored and proven effective.")
+        app_conn.rollback()
+
+    finally:
+        # Cleanup test rows to ensure idempotency and zero database pollution
+        try:
+            with owner_conn.cursor() as cur:
+                # Ensure RLS is active before cleaning up
+                cur.execute("ALTER TABLE core_schoolannouncement ENABLE ROW LEVEL SECURITY;")
+                cur.execute("ALTER TABLE core_schoolannouncement FORCE ROW LEVEL SECURITY;")
+                # Clean up announcements per tenant context
+                cur.execute("SELECT set_config('app.current_school_id', '11111111-1111-1111-1111-111111111111', false);")
+                cur.execute("DELETE FROM core_schoolannouncement WHERE id = '33333333-3333-3333-3333-333333333333';")
+                cur.execute("SELECT set_config('app.current_school_id', '22222222-2222-2222-2222-222222222222', false);")
+                cur.execute("DELETE FROM core_schoolannouncement WHERE id = '44444444-4444-4444-4444-444444444444';")
+                cur.execute("SELECT set_config('app.current_school_id', '', false);")
+                # Clean up test schools
+                cur.execute("DELETE FROM core_school WHERE id IN ('11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222');")
+        except Exception as cleanup_err:
+            print(f"Warning: Cleanup encountered an error: {cleanup_err}")
+        finally:
+            if 'owner_conn' in locals() and owner_conn and not owner_conn.closed:
+                owner_conn.close()
+            if 'app_conn' in locals() and app_conn and not app_conn.closed:
+                app_conn.close()
 
     print("\n" + "=" * 72)
     print(" [RLS Mutation Check] PASSED SUCCESSFULLY!")

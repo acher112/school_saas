@@ -20,6 +20,12 @@ class IsTenantMember(BasePermission):
             return True
 
         current_school = getattr(request, 'school', None) or get_current_school()
+        if not current_school and getattr(user, 'school', None):
+            current_school = user.school
+            request.school = user.school
+            from apps.core.context import set_current_school
+            set_current_school(user.school)
+
         if not current_school:
             # If no school context is resolved, deny access to tenant-scoped endpoints
             return False
@@ -50,7 +56,7 @@ class IsSchoolAdmin(BasePermission):
         return bool(
             request.user and
             request.user.is_authenticated and
-            (request.user.is_superuser or request.user.role == 'school_admin')
+            (request.user.is_superuser or request.user.role in ('school_admin', 'headmaster'))
         )
 
 class IsHeadmaster(BasePermission):

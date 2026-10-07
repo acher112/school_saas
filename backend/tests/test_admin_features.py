@@ -40,8 +40,9 @@ class TestAdminFeatures:
         session2_id = res2.data['id']
 
         # Verify only session2 is now current
-        s1 = AcademicSession.all_objects.get(id=session1_id)
-        s2 = AcademicSession.all_objects.get(id=session2_id)
+        tenant_context(school)
+        s1 = AcademicSession.objects.get(id=session1_id)
+        s2 = AcademicSession.objects.get(id=session2_id)
         assert s1.is_current is False
         assert s2.is_current is True
 
@@ -53,6 +54,7 @@ class TestAdminFeatures:
         )
         assert activate_res.status_code == 200
 
+        tenant_context(school)
         s1.refresh_from_db()
         s2.refresh_from_db()
         assert s1.is_current is True

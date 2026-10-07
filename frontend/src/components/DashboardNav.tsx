@@ -31,13 +31,17 @@ export function DashboardNav({
   const pathname = usePathname();
   const router = useRouter();
 
-  const navItems = [
-    { href: "/dashboard", label: lang === "ur" ? "ڈیش بورڈ" : "Overview", icon: "📊" },
-    { href: "/dashboard/sessions", label: lang === "ur" ? "تعلیمی سیشن" : "Sessions", icon: "📅" },
-    { href: "/dashboard/settings", label: lang === "ur" ? "برانڈنگ اور ترتیبات" : "Settings", icon: "🎨" },
-    { href: "/dashboard/permissions", label: lang === "ur" ? "اختیارات کا میٹرکس" : "Permissions", icon: "🛡️" },
-    { href: "/dashboard/users", label: lang === "ur" ? "صارفین و اساتذہ" : "Staff & Users", icon: "👥" },
+  const isAdminOrHeadmaster = userRole === "school_admin" || userRole === "headmaster";
+
+  const allNavItems = [
+    { href: "/dashboard", label: lang === "ur" ? "ڈیش بورڈ" : "Overview", icon: "📊", adminOnly: false },
+    { href: "/dashboard/sessions", label: lang === "ur" ? "تعلیمی سیشن" : "Sessions", icon: "📅", adminOnly: true },
+    { href: "/dashboard/settings", label: lang === "ur" ? "برانڈنگ اور ترتیبات" : "Settings", icon: "🎨", adminOnly: true },
+    { href: "/dashboard/permissions", label: lang === "ur" ? "اختیارات کا میٹرکس" : "Permissions", icon: "🛡️", adminOnly: true },
+    { href: "/dashboard/users", label: lang === "ur" ? "صارفین و اساتذہ" : "Staff & Users", icon: "👥", adminOnly: true },
   ];
+
+  const navItems = allNavItems.filter(item => !item.adminOnly || isAdminOrHeadmaster);
 
   const handleLogout = async () => {
     try {

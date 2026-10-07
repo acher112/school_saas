@@ -60,6 +60,19 @@ def create_model_fixture(model_cls, school, suffix="1"):
             kwargs[field.name] = 1
         elif field_type == 'JSONField':
             kwargs[field.name] = {"sample": "data"}
+        elif field.is_relation and field.related_model:
+            target_model = field.related_model
+            if target_model.__name__ == 'User':
+                from apps.authentication.models import User, UserRole
+                role = UserRole.STUDENT if 'student' in field.name else (UserRole.PARENT if 'parent' in field.name else UserRole.STAFF)
+                u = User.objects.create(
+                    school=school,
+                    username=f"u_{field.name}_{suffix}_{school.id}"[:30],
+                    role=role,
+                )
+                kwargs[field.name] = u
+            elif issubclass(target_model, BaseTenantModel):
+                kwargs[field.name] = create_model_fixture(target_model, school, suffix=f"{suffix}_rel")
 
     return model_cls.objects.create(**kwargs)
 

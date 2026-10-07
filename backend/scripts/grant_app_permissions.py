@@ -36,6 +36,8 @@ def grant_permissions():
                 autocommit=True
             )
             with conn.cursor() as cur:
+                # Restricted runtime app role: SELECT, INSERT, UPDATE, DELETE only (NO TRUNCATE)
+                cur.execute("REVOKE TRUNCATE ON ALL TABLES IN SCHEMA public FROM school_saas_app;")
                 print(f"  [SQL] GRANT CONNECT ON DATABASE {dbname} TO school_saas_app;")
                 cur.execute(f'GRANT CONNECT ON DATABASE "{dbname}" TO school_saas_app;')
                 print(f"  [SQL] GRANT USAGE ON SCHEMA public TO school_saas_app; ({dbname})")
@@ -44,8 +46,23 @@ def grant_permissions():
                 cur.execute("GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO school_saas_app;")
                 print(f"  [SQL] GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA public TO school_saas_app; ({dbname})")
                 cur.execute("GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA public TO school_saas_app;")
+
+                # Dedicated platform superadmin role: read-only SELECT only on tables needed for landlord oversight
+                # Explicitly EXCLUDES authentication_user to prevent access to password hashes
+                print(f"  [SQL] GRANT CONNECT ON DATABASE {dbname} TO school_saas_platform;")
+                cur.execute(f'GRANT CONNECT ON DATABASE "{dbname}" TO school_saas_platform;')
+                print(f"  [SQL] GRANT USAGE ON SCHEMA public TO school_saas_platform; ({dbname})")
+                cur.execute("GRANT USAGE ON SCHEMA public TO school_saas_platform;")
+                cur.execute("REVOKE ALL ON ALL TABLES IN SCHEMA public FROM school_saas_platform;")
+                superadmin_tables = [
+                    'core_school', 'core_domain', 'core_campus', 'core_academicsession',
+                    'core_schoolannouncement', 'core_auditlog', 'core_schoolrolepermission'
+                ]
+                for tbl in superadmin_tables:
+                    cur.execute(f'GRANT SELECT ON TABLE "{tbl}" TO school_saas_platform;')
+                print(f"  [SQL] Granted SELECT to school_saas_platform on: {', '.join(superadmin_tables)}")
             conn.close()
-            print(f"  ✓ Grants successfully applied on '{dbname}'.")
+            print(f"  [SUCCESS] Grants successfully applied on '{dbname}'.")
         except Exception as e:
             print(f"  [Warning] Could not apply grants to '{dbname}': {e}")
 

@@ -18,151 +18,151 @@ While Vercel Serverless Functions (`@vercel/python`) can run lightweight, statel
 4. **Database Connection Churn:** Ephemeral serverless lambdas rapidly exhaust database connection limits without persistent connection pools.
 5. **No Persistent WebSocket / ASGI Support:** Real-time school attendance alerts and chat notifications cannot maintain persistent socket connections.
 
-### Proposed Architecture & Division of Responsibility
-- **Frontend on Vercel:** Next.js 14 App Router deployed to Vercel for instant edge CDN distribution, SSR, and dynamic rendering. Configured with `/api/*` rewrites proxying requests to the backend API for first-party cookie security.
-- **Backend API on Render (Persistent Container):** Gunicorn/Uvicorn running inside a persistent Linux container with persistent database connection pools, Celery workers, and predictable execution environments.
+### Division of Responsibility
+- **Frontend on Vercel:** Next.js 14 App Router deployed to Vercel for edge CDN distribution, SSR, and dynamic rendering.
+- **Backend API on Render (Persistent Container):** Gunicorn WSGI running inside a persistent Linux container with connection pooling and predictable execution environments.
 - **Database on Neon PostgreSQL:** Managed PostgreSQL 16+ with built-in PgBouncer pooling and native Row-Level Security (RLS).
 
 ---
 
-## 2. GitHub Private Repository Setup
+## 2. 10-Step Click-by-Click Production Deployment
 
-1. **Verify Working Tree & Gitignore:**
-   ```powershell
-   cd d:\school-saas\new-system
-   git status
-   ```
-   Ensure `.env`, `.env.local-pg`, `.pgdata/`, `backend/venv/`, and `frontend/node_modules/` are strictly excluded.
-
-2. **Push to Private Repository:**
-   ```powershell
-   git remote add origin git@github.com:<your-organization>/school-saas.git
-   git branch -M main
-   git push -u origin main
-   ```
+### Step 1: Create Neon Project & Database
+1. Go to [neon.tech](https://neon.tech) and sign in.
+2. Click **Create Project**, name it `school-saas-prod`, and select your desired region (e.g. `US East (Ohio)` or `AWS Frankfurt`).
+3. Neon will display your initial admin connection string:
+   `postgres://neondb_owner:<password>@ep-xyz.us-east-2.aws.neon.tech/neondb?sslmode=require`
+4. Note down both the **Direct** connection string (for migrations) and the **Pooled** connection string (`-pooler` hostname for runtime).
 
 ---
 
-## 3. Neon PostgreSQL Configuration
+### Step 2: Create Dedicated Database Roles on Neon
+Open the **SQL Editor** in your Neon project dashboard (or connect via `psql` using the admin credentials). Run the following role provisioning script:
 
-### A. Pooled vs. Direct Connection Modes
-- **Direct Connection (Port 5432, hostname WITHOUT `-pooler`):**
-  - **Environment Variable:** `MIGRATION_DATABASE_URL`
-  - **Role:** `school_saas_owner` (DDL Table Owner)
-  - **Usage:** Schema migrations (`python manage.py migrate`), table alterations, and index creation.
-  - **Why:** Schema DDL operations acquire table-level exclusive locks and require direct Postgres connection sessions; PgBouncer transaction-mode pooling rejects or breaks transactional DDL.
-  - **Example:** `postgres://school_saas_owner:<password>@ep-xyz.us-east-2.aws.neon.tech/neondb?sslmode=require`
-
-- **Pooled Connection (Port 5432 or 6543, hostname WITH `-pooler`):**
-  - **Environment Variable:** `DATABASE_URL`
-  - **Role:** `school_saas_app` (Restricted Runtime Role)
-  - **Usage:** Application runtime traffic and API queries.
-  - **Why:** PgBouncer operates in transaction-mode pooling. Our tenant isolation middleware sets `SELECT set_config('app.current_school_id', %s, true);` with `is_local = true` and `ATOMIC_REQUESTS = True`, guaranteeing tenant context strictly terminates upon transaction commit/rollback and never leaks across reused connections.
-  - **Example:** `postgres://school_saas_app:<password>@ep-xyz-pooler.us-east-2.aws.neon.tech/neondb?sslmode=require`
-
-### B. SQL Script for Role Provisioning on Neon
-Run in the Neon SQL Editor or via `psql` as Neon admin:
 ```sql
 -- 1. Table Owner Role for Migrations (DDL)
-CREATE ROLE school_saas_owner WITH LOGIN PASSWORD '<REPLACE_WITH_OWNER_PASSWORD>';
+CREATE ROLE school_saas_owner WITH LOGIN PASSWORD '<GENERATE_STRONG_OWNER_PASSWORD>';
 GRANT ALL PRIVILEGES ON DATABASE neondb TO school_saas_owner;
 
--- 2. Restricted Application Runtime Role (Enforces RLS, cannot bypass)
-CREATE ROLE school_saas_app WITH LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE PASSWORD '<REPLACE_WITH_APP_PASSWORD>';
+-- 2. Restricted Application Runtime Role (Enforces RLS, cannot bypass, NO TRUNCATE)
+CREATE ROLE school_saas_app WITH LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE PASSWORD '<GENERATE_STRONG_APP_PASSWORD>';
 GRANT CONNECT ON DATABASE neondb TO school_saas_app;
 GRANT USAGE ON SCHEMA public TO school_saas_app;
-GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO school_saas_app;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO school_saas_app;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO school_saas_app;
 
--- 3. Ensure Default Privileges for Tables Created by Owner
+-- 3. Dedicated Platform / Superadmin Read-Only Role (Cross-Tenant Landlord Inspection)
+-- Note: On Neon, creating a role with BYPASSRLS is supported for project admins.
+CREATE ROLE school_saas_platform WITH LOGIN NOSUPERUSER BYPASSRLS NOCREATEDB NOCREATEROLE PASSWORD '<GENERATE_STRONG_PLATFORM_PASSWORD>';
+GRANT CONNECT ON DATABASE neondb TO school_saas_platform;
+GRANT USAGE ON SCHEMA public TO school_saas_platform;
+
+-- 4. Set Default Privileges for Tables Created by Owner
 ALTER DEFAULT PRIVILEGES FOR ROLE school_saas_owner IN SCHEMA public 
     GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO school_saas_app;
 ALTER DEFAULT PRIVILEGES FOR ROLE school_saas_owner IN SCHEMA public 
     GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO school_saas_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE school_saas_owner IN SCHEMA public 
+    GRANT SELECT ON TABLES TO school_saas_platform;
 ```
 
-> **Important Re-grant Note:** When running schema migrations that introduce new tables, if default privileges do not trigger automatically due to custom DDL execution contexts, re-run:
-> ```sql
-> GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO school_saas_app;
-> GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA public TO school_saas_app;
-> ```
-> to guarantee runtime query permissions.
-
 ---
 
-## 4. Render Deployment Steps (Backend API)
+### Step 3: Run Migrations as `school_saas_owner`
+From your local terminal (or deployment CI/CD), execute Django migrations targeting Neon using the direct, unpooled connection as the owner:
 
-1. Log into [Render Dashboard](https://dashboard.render.com).
-2. Click **New +** -> **Web Service** -> Connect your GitHub repository.
-3. Configure Service Settings:
-   - **Name:** `school-saas-api`
-   - **Root Directory:** `backend`
-   - **Environment:** `Python 3`
-   - **Build Command:**
-     ```bash
-     pip install -r requirements.txt && python manage.py collectstatic --no-input
-     ```
-   - **Start Command:**
-     ```bash
-     gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 3 --threads 2
-     ```
-   - **Health Check Path:** `/api/health/` (monitors container uptime and database connectivity for zero-downtime rolling deploys).
-
-4. **Render Free-Tier Cold-Start Note:**
-   Render's free tier spins down web services after 15 minutes of inactivity. When a subsequent request arrives, the service takes 50+ seconds to spin up, which can cause timeout errors on initial evaluation requests. For evaluation and demo reliability, use a persistent paid starter instance or ensure periodic pings to `/api/health/`.
-
----
-
-## 5. Environment Variables Checklist (By Name & Destination)
-
-### A. Vercel (Frontend Project Settings -> Environment Variables)
-- `NEXT_PUBLIC_API_URL`: Browser fallback API endpoint (e.g. `https://api.myschoolsaas.com`).
-- `BACKEND_INTERNAL_URL`: Server-side API proxy destination used by Next.js rewrites in `next.config.js` (e.g. `https://api.myschoolsaas.com`).
-- `NEXT_PUBLIC_BASE_DOMAIN`: Tenant subdomain suffix (e.g. `myschoolsaas.com`).
-
-### B. Render (Backend Web Service Dashboard -> Environment Variables)
-- `DJANGO_SECRET_KEY`: High-entropy 50-character cryptographic secret.
-- `DJANGO_DEBUG`: Set strictly to `False`.
-- `DJANGO_ALLOWED_HOSTS`: Comma-separated host whitelist (e.g. `api.myschoolsaas.com,school-saas-api.onrender.com,localhost`).
-- `CORS_ALLOWED_ORIGINS`: Allowed client origins (e.g. `https://myschoolsaas.com,https://*.myschoolsaas.com,https://*.vercel.app`).
-- `CSRF_TRUSTED_ORIGINS`: Allowed CSRF origins (e.g. `https://myschoolsaas.com,https://*.myschoolsaas.com,https://*.vercel.app`).
-- `DB_ENGINE`: `django.db.backends.postgresql`.
-- `DATABASE_URL`: Pooled Neon connection string with restricted `school_saas_app` role.
-- `MIGRATION_DATABASE_URL`: Direct Neon connection string with `school_saas_owner` role (used during deploy hook / migration execution).
-- `BASE_TENANT_DOMAIN`: Base domain (e.g. `myschoolsaas.com`).
-- `FRONTEND_URL`: Public web application root (e.g. `https://myschoolsaas.com`).
-- `SIGNUP_INVITE_CODE`: Optional invite code required during school registration (defense-in-depth gate).
-
----
-
-## 6. Vercel Deployment Protection & Second-Layer Defense
-
-### Enabling Vercel Deployment Protection
-1. Log into the [Vercel Dashboard](https://vercel.com/dashboard).
-2. Select the **School SaaS** frontend project.
-3. Navigate to **Settings** -> **Deployment Protection** (left sidebar).
-4. Under **Deployment Protection Settings**:
-   - Enable **Vercel Authentication** (restricts access to team members) OR
-   - Enable **Password Protection** and set a preview password for client/management evaluation.
-5. Save changes.
-
-### Second Layer of Defense: `SIGNUP_INVITE_CODE`
-While Vercel Deployment Protection prevents unauthenticated public visitors from loading the staging frontend, production deployments and client demos often require public viewing of the landing page. To protect against unauthorized registration of new school tenants and database resource exhaustion:
-- The backend onboarding endpoint (`POST /api/v1/core/schools/signup/`) enforces `SIGNUP_INVITE_CODE` when configured.
-- Even if an external user accesses the registration wizard, they cannot provision a new school tenant without the authorized administrative invite code.
-
----
-
-## 7. Steps to Run Migrations & `seed_demo` Against Neon From Local Machine
-
-From `d:\school-saas\new-system\backend`:
 ```powershell
-# 1. Run migrations using direct Neon connection with owner role:
-$env:DB_ENGINE = "django.db.backends.postgresql"
-$env:DATABASE_URL = "postgres://school_saas_owner:<owner-password>@ep-xyz.us-east-2.aws.neon.tech/neondb?sslmode=require"
+# In new-system/backend:
+$env:DJANGO_SETTINGS_MODULE = "config.settings"
+$env:MIGRATION_DATABASE_URL = "postgres://school_saas_owner:<owner-password>@ep-xyz.us-east-2.aws.neon.tech/neondb?sslmode=require"
 .\venv\Scripts\python manage.py migrate
+```
 
-# 2. Seed demonstration schools & print credentials:
+---
+
+### Step 4: Grant Runtime Permissions to `school_saas_app`
+After migrations have created all tables, run `backend/scripts/grant_app_permissions.py` or execute the following SQL in Neon:
+
+```sql
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO school_saas_app;
+GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA public TO school_saas_app;
+
+-- Re-verify that TRUNCATE is stripped
+REVOKE TRUNCATE ON ALL TABLES IN SCHEMA public FROM school_saas_app;
+REVOKE TRUNCATE ON ALL TABLES IN SCHEMA public FROM school_saas_platform;
+```
+
+---
+
+### Step 5: Verify Row-Level Security (RLS) & Non-Superuser Isolation
+Verify that `school_saas_app` is restricted:
+```sql
+SELECT rolname, rolsuper, rolbypassrls 
+FROM pg_roles 
+WHERE rolname IN ('school_saas_app', 'school_saas_owner', 'school_saas_platform');
+```
+Expected output:
+- `school_saas_app`: `rolsuper = false`, `rolbypassrls = false`.
+- `school_saas_platform`: `rolsuper = false`, `rolbypassrls = true`.
+
+---
+
+### Step 6: Create Superadmin or Seed Demo Schools
+To create demo schools with initial admin credentials:
+```powershell
+# Run seed command against Neon
+$env:DATABASE_URL = "postgres://school_saas_app:<app-password>@ep-xyz-pooler.us-east-2.aws.neon.tech/neondb?sslmode=require"
+$env:MIGRATION_DATABASE_URL = "postgres://school_saas_owner:<owner-password>@ep-xyz.us-east-2.aws.neon.tech/neondb?sslmode=require"
 .\venv\Scripts\python manage.py seed_demo
 ```
+The terminal prints the generated passwords once. Save them securely.
+
+---
+
+### Step 7: Push Repository to GitHub (Private Repo)
+1. Verify `.gitignore` excludes `.env`, `.env.local-pg`, `.pgdata/`, `backend/venv/`, and `frontend/.next/`.
+2. Commit and push:
+   ```bash
+   git add .
+   git commit -m "Milestone 1 evaluation release: complete onboarding and auth flow"
+   git push origin main
+   ```
+
+---
+
+### Step 8: Deploy Backend to Render (Persistent Web Service)
+1. In [Render Dashboard](https://dashboard.render.com), click **New +** -> **Web Service**.
+2. Connect your GitHub repository.
+3. Configuration:
+   - **Root Directory:** `backend`
+   - **Environment:** `Python 3`
+   - **Build Command:** `pip install -r requirements.txt && python manage.py collectstatic --no-input`
+   - **Start Command:** `gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 3 --threads 2`
+4. Set Environment Variables:
+   - `SECRET_KEY`: `<high-entropy-random-string>`
+   - `DEBUG`: `False`
+   - `ALLOWED_HOSTS`: `api.myschoolsaas.com,school-saas-api.onrender.com`
+   - `CORS_ALLOWED_ORIGINS`: `https://myschoolsaas.com,https://school-saas-frontend.vercel.app`
+   - `DATABASE_URL`: `postgres://school_saas_app:<app-password>@ep-xyz-pooler.us-east-2.aws.neon.tech/neondb?sslmode=require`
+   - `MIGRATION_DATABASE_URL`: `postgres://school_saas_owner:<owner-password>@ep-xyz.us-east-2.aws.neon.tech/neondb?sslmode=require`
+   - `RESEND_API_KEY`: `<your-resend-api-key>` (optional; logs to outbox if absent)
+   - `GOOGLE_OAUTH_CLIENT_ID`: `<google-client-id>` (optional)
+
+---
+
+### Step 9: Deploy Frontend to Vercel
+1. In [Vercel Dashboard](https://vercel.com/dashboard), click **Add New...** -> **Project**.
+2. Import your GitHub repository.
+3. Select **Root Directory:** `frontend`.
+4. Framework Preset: **Next.js**.
+5. Set Environment Variables:
+   - `NEXT_PUBLIC_API_URL`: `https://school-saas-api.onrender.com` (or your custom API domain)
+6. Click **Deploy**. Vercel builds Next.js with zero prerender errors.
+
+---
+
+### Step 10: Perform Live Verification & Onboarding Evaluation
+1. Open the Vercel deployment URL in your desktop or mobile browser.
+2. Confirm the top banner displays: `Test environment. Do not enter real student data.`
+3. Click **Register your school** and complete the 5-step onboarding wizard.
+4. Verify email using the 6-digit code.
+5. Log into the school admin dashboard, copy the School Code, and create teacher and parent accounts.
+6. Print or download the one-time credential slips.

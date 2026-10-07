@@ -5,7 +5,6 @@ from django.urls import path
 from apps.core.views import (
     HealthCheckView,
     SchoolSignupView,
-    CheckSlugAvailabilityView,
     CurrentSchoolView,
     AcademicSessionListCreateView,
     SetCurrentSessionView,
@@ -16,11 +15,21 @@ from apps.core.views import (
     LoadSampleDataView,
     ClearSampleDataView,
 )
+from apps.core.views_signup import (
+    CheckSlugAvailabilityView,
+    SchoolSignupWizardView,
+    VerifyEmailCodeView,
+    ResendVerificationCodeView,
+)
 
 urlpatterns = [
     path('health/', HealthCheckView.as_view(), name='core-health'),
     path('signup/', SchoolSignupView.as_view(), name='core-school-signup'),
+    path('signup/wizard/', SchoolSignupWizardView.as_view(), name='core-signup-wizard'),
+    path('signup/verify-email/', VerifyEmailCodeView.as_view(), name='core-signup-verify-email'),
+    path('signup/resend-code/', ResendVerificationCodeView.as_view(), name='core-signup-resend-code'),
     path('check-slug/', CheckSlugAvailabilityView.as_view(), name='core-check-slug'),
+    path('schools/check-slug/', CheckSlugAvailabilityView.as_view(), name='core-schools-check-slug'),
     path('school/', CurrentSchoolView.as_view(), name='core-current-school'),
     path('sessions/', AcademicSessionListCreateView.as_view(), name='core-sessions-list-create'),
     path('sessions/<uuid:pk>/set-current/', SetCurrentSessionView.as_view(), name='core-sessions-set-current'),

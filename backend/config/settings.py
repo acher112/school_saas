@@ -112,6 +112,9 @@ if DB_ENGINE == 'django.db.backends.postgresql' or os.getenv('DATABASE_URL'):
     run_as_owner = os.getenv('RUN_AS_OWNER', '').lower() in ('true', '1', 'yes')
     db_user = os.getenv('DB_OWNER_USER', 'school_saas_owner') if run_as_owner else os.getenv('DB_USER', os.getenv('DB_APP_USER', 'school_saas_app'))
     db_password = os.getenv('DB_OWNER_PASSWORD', '') if run_as_owner else (os.getenv('DB_PASSWORD') or os.getenv('DB_APP_PASSWORD', ''))
+    platform_user = os.getenv('DB_PLATFORM_USER', 'school_saas_platform')
+    platform_password = os.getenv('DB_PLATFORM_PASSWORD', '')
+    has_platform_config = bool(platform_password or os.getenv('PLATFORM_DATABASE_URL'))
 
     DATABASES = {
         'default': {
@@ -122,11 +125,30 @@ if DB_ENGINE == 'django.db.backends.postgresql' or os.getenv('DATABASE_URL'):
             'HOST': os.getenv('DB_HOST', '127.0.0.1'),
             'PORT': os.getenv('DB_PORT', '55432'),
             'ATOMIC_REQUESTS': True,
+            'TEST': {
+                'NAME': os.getenv('DB_TEST_NAME', 'school_saas_test'),
+            },
+        },
+        'platform': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': DB_NAME or 'school_saas_dev',
+            'USER': platform_user if has_platform_config else db_user,
+            'PASSWORD': platform_password if has_platform_config else db_password,
+            'HOST': os.getenv('DB_HOST', '127.0.0.1'),
+            'PORT': os.getenv('DB_PORT', '55432'),
+            'ATOMIC_REQUESTS': False,
+            'TEST': {
+                'MIRROR': 'default',
+            },
         }
     }
 else:
     DATABASES = {
         'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        },
+        'platform': {
             'ENGINE': 'django.db.backends.sqlite3',
             'NAME': BASE_DIR / 'db.sqlite3',
         }
@@ -216,4 +238,21 @@ CSRF_TRUSTED_ORIGINS = [
     for origin in os.getenv('CSRF_TRUSTED_ORIGINS', 'http://localhost:3000,http://127.0.0.1:3000').split(',')
     if origin.strip()
 ]
+
+# Silence auth.E003 because username uniqueness is enforced per-school via Lower('username') UniqueConstraint
+SILENCED_SYSTEM_CHECKS = ['auth.E003']
+
+# Email Provider Configuration
+EMAIL_PROVIDER = os.getenv('EMAIL_PROVIDER', 'console')  # 'console' or 'resend'
+EMAIL_API_KEY = os.getenv('EMAIL_API_KEY', '')
+EMAIL_FROM = os.getenv('EMAIL_FROM', 'noreply@schoolsaas.com')
+REQUIRE_EMAIL_VERIFICATION = os.getenv('REQUIRE_EMAIL_VERIFICATION', 'true').lower() in ('true', '1', 'yes')
+SCHOOL_APPROVAL_REQUIRED = os.getenv('SCHOOL_APPROVAL_REQUIRED', 'false').lower() in ('true', '1', 'yes')
+
+# Google OAuth Configuration
+GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID', '')
+
+# Signup Invite Code
+SIGNUP_INVITE_CODE = os.getenv('SIGNUP_INVITE_CODE', '')
+
 

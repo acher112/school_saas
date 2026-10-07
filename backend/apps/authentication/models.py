@@ -9,6 +9,8 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.utils import timezone
 
+from apps.core.models import BaseTenantModel
+
 class UserRole(models.TextChoices):
     SUPERADMIN = "superadmin", "Platform Superadmin"
     SCHOOL_ADMIN = "school_admin", "School Admin"
@@ -33,6 +35,17 @@ class User(AbstractUser):
         db_index=True,
         help_text="The school tenant this user belongs to (null for landlord staff)."
     )
+    username = models.CharField(
+        max_length=150,
+        help_text="Required. 150 characters or fewer. Case-insensitive unique within school."
+    )
+    email = models.EmailField(
+        blank=True,
+        default="",
+        help_text="Email address (optional for students and parents)."
+    )
+    google_sub = models.CharField(max_length=255, null=True, blank=True, db_index=True)
+    token_version = models.PositiveIntegerField(default=1, help_text="Incremented to force logout all sessions.")
     role = models.CharField(
         max_length=32,
         choices=UserRole.choices,
@@ -60,10 +73,58 @@ class User(AbstractUser):
         ordering = ['username']
         verbose_name = 'User'
         verbose_name_plural = 'Users'
+        constraints = [
+            models.UniqueConstraint(
+                models.functions.Lower('username'),
+                'school',
+                condition=models.Q(school__isnull=False),
+                name='unique_lower_username_per_school'
+            ),
+            models.UniqueConstraint(
+                models.functions.Lower('username'),
+                condition=models.Q(school__isnull=True),
+                name='unique_lower_global_username'
+            ),
+        ]
 
     def __str__(self):
         school_str = f" @ {self.school.slug}" if self.school else " (Global)"
         return f"{self.username} [{self.role}]{school_str}"
+
+
+class ParentStudentRelation(BaseTenantModel):
+    """
+    Tenant-scoped relationship linking a parent user to one or more student users.
+    """
+    parent = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="children_relations",
+        help_text="Parent / Guardian user account."
+    )
+    student = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="parent_relations",
+        help_text="Student user account."
+    )
+    relationship = models.CharField(
+        max_length=32,
+        default="guardian",
+        choices=[
+            ("father", "Father"),
+            ("mother", "Mother"),
+            ("guardian", "Guardian")
+        ]
+    )
+
+    class Meta:
+        unique_together = ('school', 'parent', 'student')
+        verbose_name = 'Parent Student Relation'
+        verbose_name_plural = 'Parent Student Relations'
+
+    def __str__(self):
+        return f"{self.parent.username} -> {self.student.username} ({self.relationship})"
 
 
 class UserLoginAttempt(models.Model):
