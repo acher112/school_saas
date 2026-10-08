@@ -6,13 +6,44 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 let _inMemoryAccessToken: string | null = null;
+let _inMemorySchoolSlug: string | null = null;
 
 export function setAccessToken(token: string | null) {
   _inMemoryAccessToken = token;
+  if (typeof window !== 'undefined') {
+    if (token) {
+      sessionStorage.setItem('school_access_token', token);
+    } else {
+      sessionStorage.removeItem('school_access_token');
+    }
+  }
 }
 
 export function getAccessToken(): string | null {
-  return _inMemoryAccessToken;
+  if (_inMemoryAccessToken) return _inMemoryAccessToken;
+  if (typeof window !== 'undefined') {
+    return sessionStorage.getItem('school_access_token');
+  }
+  return null;
+}
+
+export function setSchoolSlug(slug: string | null) {
+  _inMemorySchoolSlug = slug;
+  if (typeof window !== 'undefined') {
+    if (slug) {
+      sessionStorage.setItem('school_tenant_slug', slug);
+    } else {
+      sessionStorage.removeItem('school_tenant_slug');
+    }
+  }
+}
+
+export function getSchoolSlug(): string | null {
+  if (_inMemorySchoolSlug) return _inMemorySchoolSlug;
+  if (typeof window !== 'undefined') {
+    return sessionStorage.getItem('school_tenant_slug');
+  }
+  return null;
 }
 
 export interface LoginResponse {
@@ -44,13 +75,15 @@ export async function apiRequest<T>(
 
   headers.set('Content-Type', 'application/json');
 
-  if (schoolSlug) {
-    headers.set('X-School-Slug', schoolSlug);
+  const slug = schoolSlug || getSchoolSlug();
+  if (slug) {
+    headers.set('X-School-Slug', slug);
   }
 
-  // Inject in-memory access token if available
-  if (_inMemoryAccessToken) {
-    headers.set('Authorization', `Bearer ${_inMemoryAccessToken}`);
+  // Inject access token if available
+  const token = getAccessToken();
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
   }
 
   // Include credentials for httpOnly cookie transmission

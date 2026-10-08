@@ -25,6 +25,10 @@ class IsTenantMember(BasePermission):
             request.school = user.school
             from apps.core.context import set_current_school
             set_current_school(user.school)
+            from django.db import connection
+            if connection.vendor == 'postgresql':
+                with connection.cursor() as cursor:
+                    cursor.execute("SELECT set_config('app.current_school_id', %s, true);", [str(user.school.id)])
 
         if not current_school:
             # If no school context is resolved, deny access to tenant-scoped endpoints

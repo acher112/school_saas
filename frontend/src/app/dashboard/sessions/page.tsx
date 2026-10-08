@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { DashboardNav } from "@/components/DashboardNav";
 import { Language } from "@/lib/translations";
-import { apiRequest } from "@/lib/api";
+import { apiRequest, setSchoolSlug } from "@/lib/api";
 
 export default function SessionsManagementPage() {
   const [lang, setLang] = useState<Language>("en");
@@ -25,14 +25,34 @@ export default function SessionsManagementPage() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [uRes, sRes, sessRes]: any = await Promise.all([
-        apiRequest('/api/v1/auth/me/'),
-        apiRequest('/api/v1/core/school/'),
-        apiRequest('/api/v1/core/sessions/')
-      ]);
+      const uRes: any = await apiRequest('/api/v1/auth/me/');
       setUser(uRes.data);
-      setSchool(sRes.data);
-      setSessions(sessRes);
+      const targetSlug = uRes.data?.school_slug || uRes.data?.school?.slug;
+      if (targetSlug) setSchoolSlug(targetSlug);
+
+      if (uRes.data?.school) {
+        setSchool(uRes.data.school);
+      } else if (uRes.data?.school_name) {
+        setSchool({
+          id: uRes.data.school_id,
+          name: uRes.data.school_name,
+          slug: uRes.data.school_slug,
+        });
+      }
+
+      const [sRes, sessRes]: any = await Promise.allSettled([
+        apiRequest('/api/v1/core/school/', {}, targetSlug),
+        apiRequest('/api/v1/core/sessions/', {}, targetSlug)
+      ]);
+
+      if (sRes.status === "fulfilled" && sRes.value?.data) {
+        setSchool(sRes.value.data);
+      }
+      if (sessRes.status === "fulfilled" && sessRes.value) {
+        setSessions(Array.isArray(sessRes.value) ? sessRes.value : sessRes.value.data || []);
+      } else if (sessRes.status === "rejected") {
+        setStatusMsg("Failed to load sessions data.");
+      }
     } catch (err: any) {
       setStatusMsg("Failed to load sessions data.");
     } finally {

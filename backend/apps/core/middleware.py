@@ -66,15 +66,38 @@ class TenantContextMiddleware:
         """
         Multi-step tenant resolution strategy:
         1. Explicit 'X-School-Slug' HTTP Header (standard for mobile apps and programmatic API calls)
-        2. Subdomain lookup (e.g. 'beacon' from 'beacon.myschoolsaas.com')
-        3. Custom vanity domain lookup in Domain model
+        2. Authorization: Bearer JWT token claims (school_id or school_slug)
+        3. Subdomain lookup (e.g. 'beacon' from 'beacon.myschoolsaas.com')
+        4. Custom vanity domain lookup in Domain model
         """
         # Step 1: Check HTTP Header
         header_slug = request.headers.get('X-School-Slug')
         if header_slug:
-            return School.objects.filter(slug=header_slug.strip().lower()).first()
+            school = School.objects.filter(slug=header_slug.strip().lower()).first()
+            if school:
+                return school
 
-        # Step 2: Host header parsing
+        # Step 2: Check Authorization Bearer JWT token
+        auth_header = request.headers.get('Authorization', '')
+        if auth_header.startswith('Bearer '):
+            token_str = auth_header.split(' ', 1)[1].strip()
+            try:
+                from rest_framework_simplejwt.tokens import AccessToken
+                token = AccessToken(token_str)
+                school_id = token.get('school_id')
+                if school_id:
+                    school = School.objects.filter(id=school_id).first()
+                    if school:
+                        return school
+                school_slug = token.get('school_slug')
+                if school_slug:
+                    school = School.objects.filter(slug=school_slug.strip().lower()).first()
+                    if school:
+                        return school
+            except Exception:
+                pass
+
+        # Step 3: Host header parsing
         host = request.get_host().split(':')[0].lower()
 
         # Check custom domain first

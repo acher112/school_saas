@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { DashboardNav } from "@/components/DashboardNav";
 import { Language } from "@/lib/translations";
-import { apiRequest } from "@/lib/api";
+import { apiRequest, setSchoolSlug } from "@/lib/api";
 
 export default function SchoolSettingsPage() {
   const [lang, setLang] = useState<Language>("en");
@@ -27,21 +27,41 @@ export default function SchoolSettingsPage() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [uRes, sRes]: any = await Promise.all([
-        apiRequest('/api/v1/auth/me/'),
-        apiRequest('/api/v1/core/school/')
-      ]);
+      const uRes: any = await apiRequest('/api/v1/auth/me/');
       setUser(uRes.data);
-      setSchool(sRes.data);
-      setFormData({
-        name: sRes.data.name || "",
-        contact_email: sRes.data.contact_email || "",
-        contact_phone: sRes.data.contact_phone || "",
-        city: sRes.data.city || "",
-        address: sRes.data.address || "",
-        brand_primary_color: sRes.data.brand_primary_color || "#2563EB",
-        brand_accent_color: sRes.data.brand_accent_color || "#F59E0B"
-      });
+      const targetSlug = uRes.data?.school_slug || uRes.data?.school?.slug;
+      if (targetSlug) setSchoolSlug(targetSlug);
+
+      let loadedSchool = uRes.data?.school;
+      if (!loadedSchool && uRes.data?.school_name) {
+        loadedSchool = {
+          id: uRes.data.school_id,
+          name: uRes.data.school_name,
+          slug: uRes.data.school_slug,
+          brand_primary_color: "#2563EB",
+          brand_accent_color: "#F59E0B"
+        };
+      }
+
+      try {
+        const sRes: any = await apiRequest('/api/v1/core/school/', {}, targetSlug);
+        if (sRes.data) loadedSchool = sRes.data;
+      } catch (sErr) {
+        console.warn("Detailed school fetch fallback:", sErr);
+      }
+
+      if (loadedSchool) {
+        setSchool(loadedSchool);
+        setFormData({
+          name: loadedSchool.name || "",
+          contact_email: loadedSchool.contact_email || "",
+          contact_phone: loadedSchool.contact_phone || "",
+          city: loadedSchool.city || "",
+          address: loadedSchool.address || "",
+          brand_primary_color: loadedSchool.brand_primary_color || "#2563EB",
+          brand_accent_color: loadedSchool.brand_accent_color || "#F59E0B"
+        });
+      }
     } catch (err: any) {
       setStatusMsg("Failed to load school settings.");
     } finally {

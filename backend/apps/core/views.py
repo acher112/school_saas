@@ -108,6 +108,14 @@ class CurrentSchoolView(APIView):
 
     def get(self, request):
         school = getattr(request, 'school', None) or get_current_school()
+        if not school and getattr(request, 'user', None) and request.user.is_authenticated and getattr(request.user, 'school', None):
+            school = request.user.school
+            request.school = school
+            set_current_school(school)
+            if connection.vendor == 'postgresql':
+                with connection.cursor() as cursor:
+                    cursor.execute("SELECT set_config('app.current_school_id', %s, true);", [str(school.id)])
+
         if not school:
             return Response({
                 "success": False,

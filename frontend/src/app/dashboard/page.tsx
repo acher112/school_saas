@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { DashboardNav } from "@/components/DashboardNav";
 import { Language } from "@/lib/translations";
-import { apiRequest } from "@/lib/api";
+import { apiRequest, setSchoolSlug } from "@/lib/api";
 
 interface ChildRelation {
   relation_id: string;
@@ -35,10 +35,33 @@ export default function DashboardPage() {
       const userRes: any = await apiRequest("/api/v1/auth/me/");
       setUser(userRes.data);
 
-      const schoolRes: any = await apiRequest("/api/v1/core/school/");
-      setSchool(schoolRes.data);
+      const targetSlug = userRes.data?.school_slug || userRes.data?.school?.slug;
+      if (targetSlug) {
+        setSchoolSlug(targetSlug);
+      }
 
-      if (userRes.data.role === "parent") {
+      if (userRes.data?.school) {
+        setSchool(userRes.data.school);
+      } else if (userRes.data?.school_name) {
+        setSchool({
+          id: userRes.data.school_id,
+          name: userRes.data.school_name,
+          slug: userRes.data.school_slug,
+          status: "active",
+        });
+      }
+
+      try {
+        const schoolRes: any = await apiRequest("/api/v1/core/school/", {}, targetSlug);
+        if (schoolRes.data) {
+          setSchool(schoolRes.data);
+          if (schoolRes.data.slug) setSchoolSlug(schoolRes.data.slug);
+        }
+      } catch (sErr) {
+        console.warn("Detailed school fetch:", sErr);
+      }
+
+      if (userRes.data?.role === "parent") {
         try {
           const childrenRes: any = await apiRequest("/api/v1/auth/parent/children/");
           setChildren(childrenRes.data || []);

@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { DashboardNav } from "@/components/DashboardNav";
 import { Language } from "@/lib/translations";
-import { apiRequest } from "@/lib/api";
+import { apiRequest, setSchoolSlug } from "@/lib/api";
 
 export default function PermissionsManagementPage() {
   const [lang, setLang] = useState<Language>("en");
@@ -18,14 +18,34 @@ export default function PermissionsManagementPage() {
   const fetchPermissions = async () => {
     try {
       setLoading(true);
-      const [uRes, sRes, pRes]: any = await Promise.all([
-        apiRequest('/api/v1/auth/me/'),
-        apiRequest('/api/v1/core/school/'),
-        apiRequest('/api/v1/core/role-permissions/')
-      ]);
+      const uRes: any = await apiRequest('/api/v1/auth/me/');
       setUser(uRes.data);
-      setSchool(sRes.data);
-      setPermissions(pRes);
+      const targetSlug = uRes.data?.school_slug || uRes.data?.school?.slug;
+      if (targetSlug) setSchoolSlug(targetSlug);
+
+      if (uRes.data?.school) {
+        setSchool(uRes.data.school);
+      } else if (uRes.data?.school_name) {
+        setSchool({
+          id: uRes.data.school_id,
+          name: uRes.data.school_name,
+          slug: uRes.data.school_slug,
+        });
+      }
+
+      const [sRes, pRes]: any = await Promise.allSettled([
+        apiRequest('/api/v1/core/school/', {}, targetSlug),
+        apiRequest('/api/v1/core/role-permissions/', {}, targetSlug)
+      ]);
+
+      if (sRes.status === "fulfilled" && sRes.value?.data) {
+        setSchool(sRes.value.data);
+      }
+      if (pRes.status === "fulfilled" && pRes.value) {
+        setPermissions(Array.isArray(pRes.value) ? pRes.value : pRes.value.data || []);
+      } else if (pRes.status === "rejected") {
+        setStatusMsg("Failed to load role permissions matrix.");
+      }
     } catch (err: any) {
       setStatusMsg("Failed to load role permissions matrix.");
     } finally {

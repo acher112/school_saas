@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { DashboardNav } from "@/components/DashboardNav";
 import { Language } from "@/lib/translations";
-import { apiRequest } from "@/lib/api";
+import { apiRequest, setSchoolSlug } from "@/lib/api";
 
 interface UserItem {
   id: string;
@@ -63,14 +63,34 @@ export default function UsersManagementPage() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [uRes, sRes, usersRes]: any = await Promise.all([
-        apiRequest("/api/v1/auth/me/"),
-        apiRequest("/api/v1/core/school/"),
-        apiRequest("/api/v1/auth/users/")
-      ]);
+      const uRes: any = await apiRequest("/api/v1/auth/me/");
       setCurrentUser(uRes.data);
-      setSchool(sRes.data);
-      setUsers(usersRes.data || []);
+      const targetSlug = uRes.data?.school_slug || uRes.data?.school?.slug;
+      if (targetSlug) setSchoolSlug(targetSlug);
+
+      if (uRes.data?.school) {
+        setSchool(uRes.data.school);
+      } else if (uRes.data?.school_name) {
+        setSchool({
+          id: uRes.data.school_id,
+          name: uRes.data.school_name,
+          slug: uRes.data.school_slug,
+        });
+      }
+
+      const [sRes, usersRes]: any = await Promise.allSettled([
+        apiRequest("/api/v1/core/school/", {}, targetSlug),
+        apiRequest("/api/v1/auth/users/", {}, targetSlug)
+      ]);
+
+      if (sRes.status === "fulfilled" && sRes.value?.data) {
+        setSchool(sRes.value.data);
+      }
+      if (usersRes.status === "fulfilled" && usersRes.value?.data) {
+        setUsers(usersRes.value.data);
+      } else if (usersRes.status === "rejected") {
+        setStatusMsg("Failed to load user accounts.");
+      }
     } catch (err: any) {
       if (err.status === 403) {
         window.location.href = "/unauthorized";
