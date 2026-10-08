@@ -41,7 +41,7 @@ export default function LoginPage() {
   const [googleEmail, setGoogleEmail] = useState("");
 
   const t = translations[lang];
-  const isRTL = lang === "ur";
+  const isRTL = lang === "ur" || lang === "ar";
 
   // Wipe any lingering session upon opening the login page
   React.useEffect(() => {
@@ -544,7 +544,7 @@ export default function LoginPage() {
       {/* Footer */}
       <div className="text-center text-xs text-slate-400 py-4">
         Don&apos;t have a registered school yet?{" "}
-        <Link href="/signup" className="text-blue-600 dark:text-blue-400 font-semibold hover:underline">
+        <Link href="/register" className="text-blue-600 dark:text-blue-400 font-semibold hover:underline">
           Register your school here
         </Link>
       </div>

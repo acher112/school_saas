@@ -86,14 +86,20 @@ export function PublicNavbar({ lang, onLanguageChange }: PublicNavbarProps) {
 
         {/* Right Controls */}
         <div className="flex items-center gap-2.5">
-          {/* RTL / Urdu Language Toggle */}
+          {/* Multilingual Toggle (English, Urdu, Arabic) */}
           <button
-            onClick={() => onLanguageChange(isUrdu ? "en" : "ur")}
+            onClick={() => {
+              if (lang === "en") onLanguageChange("ur");
+              else if (lang === "ur") onLanguageChange("ar");
+              else onLanguageChange("en");
+            }}
             className="px-3 py-1.5 rounded-full text-xs font-semibold border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-1.5"
-            title="Toggle Urdu RTL"
+            title="Switch Language: English / اردو / العربية"
           >
             <span>🌐</span>
-            <span>{isUrdu ? "English (LTR)" : "(RTL) اردو"}</span>
+            <span>
+              {lang === "en" ? "English" : lang === "ur" ? "اردو (RTL)" : "العربية (RTL)"}
+            </span>
           </button>
 
           <ThemeToggle />

@@ -54,10 +54,11 @@ export default function SignupWizardPage() {
   const t = translations[lang];
   const isRTL = lang === "ur";
 
-  // Wipe any stale session upon visiting signup
+  // Automatically redirect any visit to /signup over to the new dedicated /register wizard
   useEffect(() => {
     clearAllSessionData();
-  }, []);
+    router.replace("/register");
+  }, [router]);
 
   // Debounced live slug availability check
   useEffect(() => {

@@ -25,11 +25,11 @@ import {
 
 export default function LandingPage() {
   const [lang, setLang] = useState<Language>("en");
-  const isUrdu = lang === "ur";
+  const isRTL = lang === "ur" || lang === "ar";
   const t = translations[lang];
 
   return (
-    <div dir={isUrdu ? "rtl" : "ltr"} className="min-h-screen flex flex-col bg-slate-50 dark:bg-[#0b0f19] text-slate-900 dark:text-slate-100 transition-colors">
+    <div dir={isRTL ? "rtl" : "ltr"} className="min-h-screen flex flex-col bg-slate-50 dark:bg-[#0b0f19] text-slate-900 dark:text-slate-100 transition-colors">
       {/* Top Navigation Bar */}
 
       {/* 2. Top Navigation Bar */}
