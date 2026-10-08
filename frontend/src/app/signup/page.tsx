@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { translations, Language } from "@/lib/translations";
-import { apiRequest, setAccessToken } from "@/lib/api";
+import { apiRequest, setAccessToken, setSchoolSlug, clearAllSessionData } from "@/lib/api";
 import { step1Schema, step2Schema, step3Schema, step4Schema, step5Schema } from "./schema";
 
 export default function SignupWizardPage() {
@@ -23,36 +23,41 @@ export default function SignupWizardPage() {
 
   const [formData, setFormData] = useState({
     // Step 1
-    school_name: "Beacon Hall Grammar School",
-    slug: "beaconhall",
+    school_name: "",
+    slug: "",
     school_type: "private",
     board: "bise_lahore",
     levels: "playgroup_to_matric",
     gender_type: "co_education",
     medium_of_instruction: "english",
     // Step 2
-    contact_phone: "03001234567",
+    contact_phone: "",
     city: "Lahore",
     province: "Punjab",
-    address: "Main Boulevard, Gulberg III",
+    address: "",
     // Step 3
-    admin_name: "Dr. Tariq Mahmood",
-    admin_email: "tariq@beaconhall.edu.pk",
-    admin_password: "SecurePassword2026!",
-    admin_confirm_password: "SecurePassword2026!",
+    admin_name: "",
+    admin_email: "",
+    admin_password: "",
+    admin_confirm_password: "",
     // Step 4
-    brand_primary_color: "#2563EB",
-    brand_accent_color: "#F59E0B",
+    brand_primary_color: "#6366F1",
+    brand_accent_color: "#10B981",
     academic_year_name: "2026-2027",
     academic_year_start: "2026-08-01",
     academic_year_end: "2027-06-30",
     // Step 5
-    terms_accepted: true,
+    terms_accepted: false,
     invite_code: "",
   });
 
   const t = translations[lang];
   const isRTL = lang === "ur";
+
+  // Wipe any stale session upon visiting signup
+  useEffect(() => {
+    clearAllSessionData();
+  }, []);
 
   // Debounced live slug availability check
   useEffect(() => {
@@ -160,6 +165,9 @@ export default function SignupWizardPage() {
         if (res.tokens?.access) {
           setAccessToken(res.tokens.access);
         }
+        if (formData.slug) {
+          setSchoolSlug(formData.slug);
+        }
         router.push('/dashboard?auto_verified=true');
       }
     } catch (err: any) {
@@ -247,6 +255,7 @@ export default function SignupWizardPage() {
               </label>
               <input
                 type="text"
+                name="school_name"
                 value={formData.school_name}
                 onChange={e => updateField("school_name", e.target.value)}
                 placeholder="e.g. Beacon Hall Grammar School"
@@ -262,6 +271,7 @@ export default function SignupWizardPage() {
               <div className="flex items-center">
                 <input
                   type="text"
+                  name="slug"
                   value={formData.slug}
                   onChange={e => updateField("slug", e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
                   placeholder="e.g. beaconhall"

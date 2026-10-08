@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { DashboardNav } from "@/components/DashboardNav";
 import { Language } from "@/lib/translations";
-import { apiRequest, setSchoolSlug } from "@/lib/api";
+import { apiRequest, setSchoolSlug, getAccessToken } from "@/lib/api";
 
 interface ChildRelation {
   relation_id: string;
@@ -32,6 +32,14 @@ export default function DashboardPage() {
   const fetchProfileAndSchool = async () => {
     try {
       setLoading(true);
+      const token = getAccessToken();
+      if (!token) {
+        if (typeof window !== "undefined") {
+          window.location.href = "/login";
+        }
+        return;
+      }
+
       const userRes: any = await apiRequest("/api/v1/auth/me/");
       setUser(userRes.data);
 
@@ -51,14 +59,16 @@ export default function DashboardPage() {
         });
       }
 
-      try {
-        const schoolRes: any = await apiRequest("/api/v1/core/school/", {}, targetSlug);
-        if (schoolRes.data) {
-          setSchool(schoolRes.data);
-          if (schoolRes.data.slug) setSchoolSlug(schoolRes.data.slug);
+      if (targetSlug) {
+        try {
+          const schoolRes: any = await apiRequest("/api/v1/core/school/", {}, targetSlug);
+          if (schoolRes.data) {
+            setSchool(schoolRes.data);
+            if (schoolRes.data.slug) setSchoolSlug(schoolRes.data.slug);
+          }
+        } catch (sErr) {
+          console.warn("Detailed school fetch:", sErr);
         }
-      } catch (sErr) {
-        console.warn("Detailed school fetch:", sErr);
       }
 
       if (userRes.data?.role === "parent") {
@@ -70,7 +80,14 @@ export default function DashboardPage() {
         }
       }
     } catch (err: any) {
-      setStatusMsg("Failed to load school tenant data. Please ensure you are logged in.");
+      if (err.status === 401 || err.status === 403) {
+        // Stale or invalid credentials -> redirect cleanly to login
+        if (typeof window !== "undefined") {
+          window.location.href = "/login";
+        }
+      } else {
+        setStatusMsg("Failed to load school tenant data. Please ensure you are logged in.");
+      }
     } finally {
       setLoading(false);
     }
@@ -88,11 +105,33 @@ export default function DashboardPage() {
     }
   }, []);
 
-  const handleCopySchoolCode = () => {
-    if (school?.slug) {
-      navigator.clipboard.writeText(school.slug);
+  const fallbackCopy = (text: string) => {
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
       setCopiedCode(true);
       setTimeout(() => setCopiedCode(false), 2000);
+    } catch {
+      // Ignore
+    }
+  };
+
+  const handleCopySchoolCode = () => {
+    const code = school?.slug || user?.school_slug;
+    if (!code) return;
+    if (typeof navigator !== "undefined" && navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(code).then(() => {
+        setCopiedCode(true);
+        setTimeout(() => setCopiedCode(false), 2000);
+      }).catch(() => fallbackCopy(code));
+    } else {
+      fallbackCopy(code);
     }
   };
 
@@ -209,7 +248,7 @@ export default function DashboardPage() {
                 {lang === "ur" ? "اسکول کوڈ (لاگ ان کے لیے)" : "School Code (For Login)"}
               </div>
               <div className="text-lg font-black font-mono tracking-wider text-blue-700 dark:text-blue-300">
-                {school?.slug || "..."}
+                {school?.slug || user?.school_slug || "..."}
               </div>
             </div>
             <button
@@ -224,6 +263,107 @@ export default function DashboardPage() {
               <span>{copiedCode ? "✓" : "📋"}</span>
               <span>{copiedCode ? (lang === "ur" ? "کاپی ہو گیا" : "Copied!") : (lang === "ur" ? "کاپی کریں" : "Copy")}</span>
             </button>
+          </div>
+        </div>
+
+        {/* ========================================================================= */}
+        {/* ROLE PANEL 1: ADMIN & HEADMASTER */}
+        {/* ========================================================================= */}
+        {/* Quick Role Portals Navigation Bar */}
+        <div className="flex flex-wrap items-center gap-2 p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs shadow-sm">
+          <span className="font-bold text-slate-500 px-2">Role Portals:</span>
+          <Link
+            href="/admin"
+            className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold transition flex items-center gap-1.5 shadow-sm"
+          >
+            <span>👑</span>
+            <span>Admin Executive Hub (Image 2) →</span>
+          </Link>
+          <Link
+            href="/headmaster"
+            className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold transition"
+          >
+            <span>🎓</span>
+            <span>Headmaster</span>
+          </Link>
+          <Link
+            href="/teacher"
+            className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold transition"
+          >
+            <span>👨‍🏫</span>
+            <span>Teacher</span>
+          </Link>
+          <Link
+            href="/accountant"
+            className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold transition"
+          >
+            <span>💼</span>
+            <span>1Link Accountant</span>
+          </Link>
+          <Link
+            href="/student"
+            className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold transition"
+          >
+            <span>🎒</span>
+            <span>Student</span>
+          </Link>
+          <Link
+            href="/parent"
+            className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold transition"
+          >
+            <span>👨‍👩‍👧</span>
+            <span>Parent</span>
+          </Link>
+        </div>
+
+        {/* 4 Image 2 Metric Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-500">Total Students</span>
+              <span className="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-xs">👥</span>
+            </div>
+            <div className="mt-3 flex items-baseline gap-2">
+              <span className="text-2xl font-extrabold text-slate-900 dark:text-white">12,450</span>
+              <span className="text-[11px] font-bold text-emerald-500">↗ +4%</span>
+            </div>
+          </div>
+
+          <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-500">Total Teachers & Staff</span>
+              <span className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold text-xs">👨‍🏫</span>
+            </div>
+            <div className="mt-3 flex items-baseline gap-2">
+              <span className="text-2xl font-extrabold text-slate-900 dark:text-white">348</span>
+              <span className="text-[11px] text-slate-500">Active</span>
+            </div>
+          </div>
+
+          <div className="p-5 rounded-3xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-indigo-100">Monthly Fees Collected</span>
+              <span className="w-8 h-8 rounded-xl bg-white/20 text-white flex items-center justify-center font-bold text-xs">💳</span>
+            </div>
+            <div className="mt-3 flex items-baseline gap-2">
+              <span className="text-2xl font-extrabold text-white">PKR 4.8M</span>
+              <span className="text-[11px] text-indigo-200">1Link 1Bill</span>
+            </div>
+          </div>
+
+          <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
+            <div>
+              <span className="text-xs font-semibold text-slate-500">Attendance Today</span>
+              <div className="text-2xl font-extrabold text-slate-900 dark:text-white mt-3">94.2%</div>
+              <div className="text-[10px] text-emerald-500 font-medium mt-1">● Biometrics Active</div>
+            </div>
+            <div className="relative w-16 h-16 flex items-center justify-center">
+              <svg width="64" height="64" className="w-16 h-16 transform -rotate-90" viewBox="0 0 64 64">
+                <circle cx="32" cy="32" r="26" stroke="#e2e8f0" strokeWidth="6" fill="transparent" className="dark:stroke-slate-800" />
+                <circle cx="32" cy="32" r="26" stroke="#06b6d4" strokeWidth="6" strokeDasharray="163.3" strokeDashoffset="9.5" strokeLinecap="round" fill="transparent" />
+              </svg>
+              <span className="absolute text-[11px] font-bold text-cyan-500">94%</span>
+            </div>
           </div>
         </div>
 
@@ -261,7 +401,7 @@ export default function DashboardPage() {
                     {lang === "ur" ? "اسکول رجسٹر اور ای میل تصدیق" : "School Registration & Email"}
                   </div>
                   <div className="text-[11px] text-slate-500">
-                    Verified slug: <code className="font-bold text-emerald-700 dark:text-emerald-400">{school?.slug}</code>
+                    Verified slug: <code className="font-bold text-emerald-700 dark:text-emerald-400">{school?.slug || user?.school_slug || "Active"}</code>
                   </div>
                 </div>
 

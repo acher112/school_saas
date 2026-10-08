@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Language } from "@/lib/translations";
-import { apiRequest, setAccessToken } from "@/lib/api";
+import { performLogout } from "@/lib/api";
 
 interface DashboardNavProps {
   lang: Language;
@@ -44,13 +44,7 @@ export function DashboardNav({
   const navItems = allNavItems.filter(item => !item.adminOnly || isAdminOrHeadmaster);
 
   const handleLogout = async () => {
-    try {
-      await apiRequest('/api/v1/auth/logout/', { method: 'POST' });
-    } catch (e) {
-      // Ignore error and clear in-memory state
-    }
-    setAccessToken(null);
-    router.push('/login');
+    await performLogout();
   };
 
   return (

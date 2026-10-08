@@ -20,3 +20,44 @@
 body {
   font-family: var(--font-sans);
 }
+
+/* ========================================================================= */
+/* DEDICATED PRINT STYLES FOR CREDENTIAL SLIPS */
+/* ========================================================================= */
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  /* Hide regular page elements, dashboard navigation, and dialog overlays */
+  body * {
+    visibility: hidden !important;
+  }
+
+  /* Make only the credential slip printable area visible */
+  #credential-slip-print,
+  #credential-slip-print * {
+    visibility: visible !important;
+  }
+
+  #credential-slip-print {
+    position: fixed !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 32px !important;
+    border: 2px dashed #333333 !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    box-shadow: none !important;
+    z-index: 999999 !important;
+  }
+
+  .print\:hidden,
+  .no-print {
+    display: none !important;
+  }
+}

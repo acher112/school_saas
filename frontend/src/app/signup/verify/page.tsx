@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { translations, Language } from "@/lib/translations";
-import { apiRequest, setAccessToken } from "@/lib/api";
+import { apiRequest, setAccessToken, setSchoolSlug } from "@/lib/api";
 
 function VerifyEmailContent() {
   const router = useRouter();
@@ -114,6 +114,9 @@ function VerifyEmailContent() {
 
       if (res.tokens?.access) {
         setAccessToken(res.tokens.access);
+      }
+      if (res.school?.slug) {
+        setSchoolSlug(res.school.slug);
       }
       setSuccessResult(res);
     } catch (err: any) {

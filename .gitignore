@@ -47,3 +47,9 @@ backend/media/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Logs & Test outputs
+*.log
+backend/*.log
+frontend/test-results/
+frontend/design/screenshots/

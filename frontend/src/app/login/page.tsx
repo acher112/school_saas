@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { translations, Language } from "@/lib/translations";
-import { apiRequest, setAccessToken } from "@/lib/api";
+import { apiRequest, setAccessToken, setSchoolSlug, clearAllSessionData } from "@/lib/api";
 
 interface SchoolOption {
   id: string;
@@ -43,6 +43,11 @@ export default function LoginPage() {
   const t = translations[lang];
   const isRTL = lang === "ur";
 
+  // Wipe any lingering session upon opening the login page
+  React.useEffect(() => {
+    clearAllSessionData();
+  }, []);
+
   const handleLoginSubmit = async (e?: React.FormEvent, overrideSchoolCode?: string) => {
     if (e) e.preventDefault();
     setLoading(true);
@@ -67,6 +72,10 @@ export default function LoginPage() {
 
       if (res.access) {
         setAccessToken(res.access);
+        const slug = res.user?.school?.slug || res.user?.school_slug;
+        if (slug) {
+          setSchoolSlug(slug);
+        }
         setAuthSuccess(res);
       }
     } catch (err: any) {
