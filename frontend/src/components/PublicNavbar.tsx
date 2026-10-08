@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { ThemeToggle } from "./ThemeToggle";
 import { Language } from "@/lib/translations";
-import { GraduationCap, ChevronDown, Sparkles } from "lucide-react";
+import { GraduationCap, ChevronDown, Sparkles, LayoutDashboard } from "lucide-react";
+import { getAccessToken } from "@/lib/api";
 
 interface PublicNavbarProps {
   lang: Language;
@@ -13,7 +14,12 @@ interface PublicNavbarProps {
 
 export function PublicNavbar({ lang, onLanguageChange }: PublicNavbarProps) {
   const [featuresOpen, setFeaturesOpen] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const isUrdu = lang === "ur";
+
+  useEffect(() => {
+    setIsLoggedIn(!!getAccessToken());
+  }, []);
 
   return (
     <header className="sticky top-0 z-40 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 transition">
@@ -104,20 +110,33 @@ export function PublicNavbar({ lang, onLanguageChange }: PublicNavbarProps) {
 
           <ThemeToggle />
 
-          <Link
-            href="/login"
-            className="hidden sm:inline-flex px-3.5 py-1.5 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-          >
-            Sign In
-          </Link>
+          {isLoggedIn ? (
+            <Link
+              href="/admin"
+              className="px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:from-indigo-700 hover:to-purple-700 text-white text-xs font-bold shadow-md shadow-indigo-500/25 transition transform hover:-translate-y-0.5 flex items-center gap-1.5"
+            >
+              <LayoutDashboard className="w-4 h-4" />
+              <span>Go to Dashboard</span>
+              <span>→</span>
+            </Link>
+          ) : (
+            <>
+              <Link
+                href="/login"
+                className="hidden sm:inline-flex px-3.5 py-1.5 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+              >
+                Sign In
+              </Link>
 
-          <Link
-            href="/register"
-            className="px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-xs font-bold shadow-md shadow-indigo-500/25 transition transform hover:-translate-y-0.5 flex items-center gap-1"
-          >
-            <span>Register School</span>
-            <span>→</span>
-          </Link>
+              <Link
+                href="/register"
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-xs font-bold shadow-md shadow-indigo-500/25 transition transform hover:-translate-y-0.5 flex items-center gap-1"
+              >
+                <span>Register School</span>
+                <span>→</span>
+              </Link>
+            </>
+          )}
         </div>
       </div>
     </header>

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { DashboardNav } from "@/components/DashboardNav";
 import { Language } from "@/lib/translations";
 import { apiRequest, setSchoolSlug, getAccessToken } from "@/lib/api";
@@ -17,6 +18,7 @@ interface ChildRelation {
 }
 
 export default function DashboardPage() {
+  const router = useRouter();
   const [lang, setLang] = useState<Language>("en");
   const [school, setSchool] = useState<any>(null);
   const [user, setUser] = useState<any>(null);
@@ -42,6 +44,12 @@ export default function DashboardPage() {
 
       const userRes: any = await apiRequest("/api/v1/auth/me/");
       setUser(userRes.data);
+
+      // If user is admin, cleanly route to the executive /admin dashboard
+      if (userRes.data?.role === "admin") {
+        router.replace("/admin");
+        return;
+      }
 
       const targetSlug = userRes.data?.school_slug || userRes.data?.school?.slug;
       if (targetSlug) {

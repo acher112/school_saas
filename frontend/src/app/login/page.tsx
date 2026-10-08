@@ -77,6 +77,11 @@ export default function LoginPage() {
           setSchoolSlug(slug);
         }
         setAuthSuccess(res);
+        // If not requiring password change, auto-route to respective role dashboard
+        if (!res.user?.must_change_password) {
+          const dest = res.user?.role === 'admin' ? '/admin' : `/${res.user?.role || 'dashboard'}`;
+          router.push(dest);
+        }
       }
     } catch (err: any) {
       // Check if API returned multi-school selection
@@ -151,7 +156,15 @@ export default function LoginPage() {
       } else if (res.access) {
         setShowGoogleModal(false);
         setAccessToken(res.access);
+        const slug = res.user?.school?.slug || res.user?.school_slug;
+        if (slug) {
+          setSchoolSlug(slug);
+        }
         setAuthSuccess(res);
+        if (!res.user?.must_change_password) {
+          const dest = res.user?.role === 'admin' ? '/admin' : `/${res.user?.role || 'dashboard'}`;
+          router.push(dest);
+        }
       }
     } catch (err: any) {
       setErrorMsg(err.message || "Google sign-in failed. Please verify account.");
@@ -217,10 +230,10 @@ export default function LoginPage() {
                 </Link>
               )}
               <Link
-                href="/dashboard"
-                className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition shadow-md shadow-blue-500/20 text-center block"
+                href={authSuccess.user.role === 'admin' ? '/admin' : `/${authSuccess.user.role || 'dashboard'}`}
+                className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition shadow-md shadow-indigo-500/20 text-center block"
               >
-                Go to Portal Dashboard →
+                Go to Executive Dashboard →
               </Link>
             </div>
           </div>

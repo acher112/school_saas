@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { apiRequest, setSchoolSlug, clearAllSessionData } from "@/lib/api";
+import { apiRequest, setSchoolSlug, setAccessToken, clearAllSessionData } from "@/lib/api";
 import { Banner } from "@/components/Banner";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { GraduationCap, Sparkles, CheckCircle2, ArrowRight, ShieldCheck, Building2, User, KeyRound } from "lucide-react";
@@ -97,7 +97,8 @@ export default function RegisterWizardPage() {
 
       // Save tokens and session
       if (res?.data?.tokens?.access) {
-        localStorage.setItem("school_access_token", res.data.tokens.access);
+        setAccessToken(res.data.tokens.access);
+        setSchoolSlug(formData.slug);
       }
 
       // Save registration success info to sessionStorage for success page

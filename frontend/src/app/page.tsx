@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { Banner } from "@/components/Banner";
 import { PublicNavbar } from "@/components/PublicNavbar";
 import { PublicFooter } from "@/components/PublicFooter";
 import { StudentIllustration, TeacherIllustration, HeroDashboardMockup } from "@/components/HeroIllustrations";
 import { Language, translations } from "@/lib/translations";
+import { getAccessToken } from "@/lib/api";
 import {
   ShieldCheck,
   CalendarDays,
@@ -21,12 +22,18 @@ import {
   Sparkles,
   ArrowRight,
   TrendingUp,
+  LayoutDashboard,
 } from "lucide-react";
 
 export default function LandingPage() {
   const [lang, setLang] = useState<Language>("en");
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const isRTL = lang === "ur" || lang === "ar";
   const t = translations[lang];
+
+  useEffect(() => {
+    setIsLoggedIn(!!getAccessToken());
+  }, []);
 
   return (
     <div dir={isRTL ? "rtl" : "ltr"} className="min-h-screen flex flex-col bg-slate-50 dark:bg-[#0b0f19] text-slate-900 dark:text-slate-100 transition-colors">
@@ -66,21 +73,44 @@ export default function LandingPage() {
 
               {/* Action Buttons */}
               <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 pt-2">
-                <Link
-                  href="/register"
-                  className="w-full sm:w-auto px-7 py-3.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-sm font-bold shadow-lg shadow-indigo-500/30 transition transform hover:-translate-y-0.5 flex items-center justify-center gap-2"
-                >
-                  <span>🚀</span>
-                  <span>Register Your School Now</span>
-                </Link>
+                {isLoggedIn ? (
+                  <>
+                    <Link
+                      href="/admin"
+                      className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:from-indigo-700 hover:to-purple-700 text-white text-sm font-bold shadow-lg shadow-indigo-500/30 transition transform hover:-translate-y-0.5 flex items-center justify-center gap-2"
+                    >
+                      <LayoutDashboard className="w-5 h-5" />
+                      <span>Go to Admin Dashboard</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </Link>
 
-                <Link
-                  href="/login"
-                  className="w-full sm:w-auto px-7 py-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm font-bold shadow-sm transition flex items-center justify-center gap-2"
-                >
-                  <span>🔑</span>
-                  <span>Explore Demo Portals</span>
-                </Link>
+                    <Link
+                      href="/login"
+                      className="w-full sm:w-auto px-7 py-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm font-bold shadow-sm transition flex items-center justify-center gap-2"
+                    >
+                      <span>🔄</span>
+                      <span>Switch Account / Sign In</span>
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    <Link
+                      href="/register"
+                      className="w-full sm:w-auto px-7 py-3.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-sm font-bold shadow-lg shadow-indigo-500/30 transition transform hover:-translate-y-0.5 flex items-center justify-center gap-2"
+                    >
+                      <span>🚀</span>
+                      <span>Register Your School Now</span>
+                    </Link>
+
+                    <Link
+                      href="/login"
+                      className="w-full sm:w-auto px-7 py-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm font-bold shadow-sm transition flex items-center justify-center gap-2"
+                    >
+                      <span>🔑</span>
+                      <span>Explore Demo Portals</span>
+                    </Link>
+                  </>
+                )}
               </div>
 
               {/* Mini trust markers */}
