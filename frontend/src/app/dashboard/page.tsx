@@ -45,8 +45,9 @@ export default function DashboardPage() {
       const userRes: any = await apiRequest("/api/v1/auth/me/");
       setUser(userRes.data);
 
-      // If user is admin, cleanly route to the executive /admin dashboard
-      if (userRes.data?.role === "admin") {
+      // If user is admin/school_admin, cleanly route to the executive /admin dashboard
+      const userRole = userRes.data?.role;
+      if (userRole === "admin" || userRole === "school_admin" || userRole === "superadmin") {
         router.replace("/admin");
         return;
       }

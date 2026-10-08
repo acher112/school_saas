@@ -79,7 +79,9 @@ export default function LoginPage() {
         setAuthSuccess(res);
         // If not requiring password change, auto-route to respective role dashboard
         if (!res.user?.must_change_password) {
-          const dest = res.user?.role === 'admin' ? '/admin' : `/${res.user?.role || 'dashboard'}`;
+          const userRole = res.user?.role;
+          const isAdminRole = userRole === 'admin' || userRole === 'school_admin' || userRole === 'superadmin';
+          const dest = isAdminRole ? '/admin' : `/${userRole || 'dashboard'}`;
           router.push(dest);
         }
       }
@@ -162,7 +164,9 @@ export default function LoginPage() {
         }
         setAuthSuccess(res);
         if (!res.user?.must_change_password) {
-          const dest = res.user?.role === 'admin' ? '/admin' : `/${res.user?.role || 'dashboard'}`;
+          const userRole = res.user?.role;
+          const isAdminRole = userRole === 'admin' || userRole === 'school_admin' || userRole === 'superadmin';
+          const dest = isAdminRole ? '/admin' : `/${userRole || 'dashboard'}`;
           router.push(dest);
         }
       }
@@ -230,7 +234,7 @@ export default function LoginPage() {
                 </Link>
               )}
               <Link
-                href={authSuccess.user.role === 'admin' ? '/admin' : `/${authSuccess.user.role || 'dashboard'}`}
+                href={(authSuccess.user.role === 'admin' || authSuccess.user.role === 'school_admin' || authSuccess.user.role === 'superadmin') ? '/admin' : `/${authSuccess.user.role || 'dashboard'}`}
                 className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition shadow-md shadow-indigo-500/20 text-center block"
               >
                 Go to Executive Dashboard →
