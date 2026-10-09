@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { performLogout, getAccessToken } from "@/lib/api";
+import { Language, translations } from "@/lib/translations";
 import { ThemeToggle } from "./ThemeToggle";
 import {
   LayoutDashboard,
@@ -31,43 +32,77 @@ interface AppShellProps {
   userName?: string;
   schoolName?: string;
   schoolSlug?: string;
+  lang?: Language;
+  onLanguageChange?: (lang: Language) => void;
 }
 
 export function AppShell({
   children,
   activeRole = "admin",
-  title = "Dashboard Overview",
+  title,
   userName = "Admin Account",
   schoolName = "SchoolSaaS Cloud",
   schoolSlug = "portal",
+  lang: controlledLang,
+  onLanguageChange,
 }: AppShellProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [isRTL, setIsRTL] = useState(false);
+  const [internalLang, setInternalLang] = useState<Language>("en");
   const [notificationsOpen, setNotificationsOpen] = useState(false);
 
-  // Sync RTL state
-  const toggleRTL = () => {
-    setIsRTL(!isRTL);
-    if (typeof document !== "undefined") {
-      document.documentElement.dir = !isRTL ? "rtl" : "ltr";
+  useEffect(() => {
+    if (!controlledLang) {
+      try {
+        const saved = localStorage.getItem("app_lang") as Language;
+        if (saved && (saved === "en" || saved === "ur" || saved === "ar")) {
+          setInternalLang(saved);
+        }
+      } catch (e) {}
+    }
+  }, [controlledLang]);
+
+  const lang = controlledLang || internalLang;
+  const isRTL = lang === "ur" || lang === "ar";
+  const t = translations[lang];
+
+  const handleLanguageCycle = () => {
+    let nextLang: Language = "en";
+    if (lang === "en") nextLang = "ur";
+    else if (lang === "ur") nextLang = "ar";
+    else nextLang = "en";
+
+    try {
+      localStorage.setItem("app_lang", nextLang);
+    } catch (e) {}
+
+    if (onLanguageChange) {
+      onLanguageChange(nextLang);
+    } else {
+      setInternalLang(nextLang);
     }
   };
+
+  useEffect(() => {
+    if (typeof document !== "undefined") {
+      document.documentElement.dir = isRTL ? "rtl" : "ltr";
+    }
+  }, [isRTL]);
 
   const handleLogout = async () => {
     await performLogout();
   };
 
   const navItems = [
-    { href: "/admin", label: isRTL ? "ڈیش بورڈ" : "Dashboard", icon: LayoutDashboard },
-    { href: "/headmaster", label: isRTL ? "تعلیمی شعبہ" : "Academics", icon: GraduationCap, hasSubmenu: true },
-    { href: "/admin/students", label: isRTL ? "طلباء اور داخلے" : "Students & Enrollment", icon: Users },
-    { href: "/accountant", label: isRTL ? "فنانس اور فیس چالان" : "Finance & Fee Challans", icon: CreditCard },
-    { href: "/teacher", label: isRTL ? "حاضری اور چھٹیاں" : "Attendance & Leaves", icon: CalendarCheck },
-    { href: "/admin/campuses", label: isRTL ? "ملٹی کیمپس ایڈمن" : "Multi-Campus Admin", icon: Building2 },
-    { href: "/dashboard/permissions", label: isRTL ? "صارفین کے اختیارات" : "User Permissions", icon: ShieldCheck },
-    { href: "/dashboard/settings", label: isRTL ? "ترتیبات" : "Settings", icon: Settings },
+    { href: "/admin", label: t.admin.navDashboard, icon: LayoutDashboard },
+    { href: "/headmaster", label: t.admin.navAcademics, icon: GraduationCap, hasSubmenu: true },
+    { href: "/admin/students", label: t.admin.navStudents, icon: Users },
+    { href: "/accountant", label: t.admin.navFinance, icon: CreditCard },
+    { href: "/teacher", label: t.admin.navAttendance, icon: CalendarCheck },
+    { href: "/admin/campuses", label: t.admin.navCampuses, icon: Building2 },
+    { href: "/dashboard/permissions", label: t.admin.navPermissions, icon: ShieldCheck },
+    { href: "/dashboard/settings", label: t.admin.navSettings, icon: Settings },
   ];
 
   return (
@@ -91,10 +126,11 @@ export function AppShell({
 
         <div className="flex items-center gap-2">
           <button
-            onClick={toggleRTL}
+            onClick={handleLanguageCycle}
             className="px-2 py-1 rounded text-[11px] font-semibold bg-slate-800 border border-slate-700 text-slate-300"
+            title="Switch Language (English / اردو / العربية)"
           >
-            {isRTL ? "LTR" : "اردو RTL"}
+            {lang === "en" ? "English" : lang === "ur" ? "اردو" : "العربية"}
           </button>
           <div className="w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold">
             {userName[0] || "M"}
@@ -170,14 +206,14 @@ export function AppShell({
             </nav>
           </div>
 
-          {/* Bottom Actions */}
+            {/* Bottom Actions */}
           <div className="p-4 border-t border-slate-800/80 space-y-2">
             <button
               onClick={handleLogout}
               className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-rose-400 hover:text-rose-300 hover:bg-rose-950/30 transition"
             >
               <LogOut className="w-4 h-4" />
-              <span>{isRTL ? "لاگ آؤٹ" : "Log Out"}</span>
+              <span>{t.admin.logout}</span>
             </button>
           </div>
         </aside>
@@ -189,11 +225,11 @@ export function AppShell({
             {/* Title / Greeting */}
             <div className="flex items-center gap-2">
               <h1 className="font-extrabold text-sm sm:text-base text-white tracking-tight">
-                {title}
+                {title || t.admin.navDashboard}
               </h1>
               <span className="text-slate-500 hidden sm:inline">•</span>
               <span className="text-xs text-slate-400 hidden sm:inline">
-                Welcome back, {userName.split(" ")[0]}!
+                {t.admin.welcomeBack}, {userName.split(" ")[0]}!
               </span>
             </div>
 
@@ -204,7 +240,7 @@ export function AppShell({
                 <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                 <input
                   type="text"
-                  placeholder="Search modules, students..."
+                  placeholder={t.admin.searchPlaceholder}
                   className="w-64 pl-9 pr-4 py-1.5 rounded-xl bg-[#161e31] border border-slate-700/80 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition"
                 />
               </div>
@@ -239,13 +275,16 @@ export function AppShell({
                 )}
               </div>
 
-              {/* Urdu RTL Switch button */}
+              {/* Language Switch button */}
               <button
-                onClick={toggleRTL}
+                onClick={handleLanguageCycle}
                 className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#161e31] border border-slate-700/80 text-slate-300 hover:text-white text-xs font-semibold transition"
+                title="Switch Language (English / اردو / العربية)"
               >
-                <span>{isRTL ? "LTR" : "اردو"}</span>
-                <span className="text-[10px] px-1 py-0.2 rounded bg-indigo-500/20 text-indigo-400 font-mono">RTL</span>
+                <span>{lang === "en" ? "English" : lang === "ur" ? "اردو" : "العربية"}</span>
+                <span className="text-[10px] px-1 py-0.2 rounded bg-indigo-500/20 text-indigo-400 font-mono">
+                  {isRTL ? "RTL" : "LTR"}
+                </span>
               </button>
 
               <ThemeToggle />

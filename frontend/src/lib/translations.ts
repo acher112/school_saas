@@ -2,25 +2,66 @@ export type Language = 'en' | 'ur' | 'ar';
 
 export interface Translations {
   appName: string;
+  nav: {
+    features: string;
+    allModules: string;
+    allModulesSub: string;
+    forSchools: string;
+    forTeachers: string;
+    forParents: string;
+    pricing: string;
+    demo: string;
+    signIn: string;
+    registerSchool: string;
+    goToDashboard: string;
+  };
   landing: {
+    heroPill: string;
     heroTitle: string;
+    heroTitleHighlight: string;
     heroSubtitle: string;
     ctaRegister: string;
     ctaDemo: string;
+    ctaDashboard: string;
+    ctaSwitchAccount: string;
+    trustZeroLeakage: string;
+    trustFbise: string;
+    trustOneLink: string;
     featuresHeading: string;
     featuresSubtitle: string;
     feat1Title: string;
     feat1Desc: string;
+    feat1Tag: string;
     feat2Title: string;
     feat2Desc: string;
+    feat2Tag: string;
     feat3Title: string;
     feat3Desc: string;
+    feat3Tag: string;
     feat4Title: string;
     feat4Desc: string;
+    feat4Tag: string;
     feat5Title: string;
     feat5Desc: string;
+    feat5Tag: string;
     feat6Title: string;
     feat6Desc: string;
+    feat6Tag: string;
+    demoRolePill: string;
+    demoRoleHeading: string;
+    demoRoleSubtitle: string;
+    roleAdmin: string;
+    roleAdminSub: string;
+    roleHeadmaster: string;
+    roleHeadmasterSub: string;
+    roleTeacher: string;
+    roleTeacherSub: string;
+    roleAccountant: string;
+    roleAccountantSub: string;
+    roleStudent: string;
+    roleStudentSub: string;
+    roleParent: string;
+    roleParentSub: string;
     pricingHeading: string;
     pricingSubtitle: string;
     plan1Name: string;
@@ -34,6 +75,40 @@ export interface Translations {
     plan3Desc: string;
     demoBanner: string;
     demoButton: string;
+  };
+  admin: {
+    dashboardTitle: string;
+    welcomeBack: string;
+    totalStudents: string;
+    totalFaculty: string;
+    activeFaculty: string;
+    monthlyFees: string;
+    billingPercent: string;
+    attendanceToday: string;
+    biometricsLive: string;
+    academicsTitle: string;
+    scheduleToday: string;
+    activeTerms: string;
+    accountsTitle: string;
+    feeDefaulters: string;
+    onlineChallans: string;
+    hrTitle: string;
+    leaveRequests: string;
+    biometricLogs: string;
+    campusNetwork: string;
+    chartTitle: string;
+    chartSubtitle: string;
+    notificationsTitle: string;
+    searchPlaceholder: string;
+    logout: string;
+    navDashboard: string;
+    navAcademics: string;
+    navStudents: string;
+    navFinance: string;
+    navAttendance: string;
+    navCampuses: string;
+    navPermissions: string;
+    navSettings: string;
   };
   login: {
     title: string;
@@ -72,25 +147,66 @@ export interface Translations {
 export const translations: Record<Language, Translations> = {
   en: {
     appName: "SchoolSaaS Cloud",
+    nav: {
+      features: "Features",
+      allModules: "All Modules & Specs",
+      allModulesSub: "42 Specs",
+      forSchools: "For Multi-Campus Schools",
+      forTeachers: "For Teachers & Academics",
+      forParents: "For Parents & Fee Vouchers",
+      pricing: "Pricing",
+      demo: "Demo",
+      signIn: "Sign In",
+      registerSchool: "Register School",
+      goToDashboard: "Go to Dashboard",
+    },
     landing: {
-      heroTitle: "The Next-Generation Operating System for Pakistani Schools",
+      heroPill: "School Cloud 2026 • Production-Ready Multi-Tenant Architecture",
+      heroTitle: "The Next-Generation Operating System for",
+      heroTitleHighlight: "Pakistani Schools",
       heroSubtitle: "Complete institutional management: private subdomains, automated fee vouchers with Pakistani gateways, multi-campus governance, and dual English/Urdu portals.",
       ctaRegister: "Register Your School Now",
       ctaDemo: "Explore Demo Portals",
+      ctaDashboard: "Go to Admin Dashboard",
+      ctaSwitchAccount: "Switch Account / Sign In",
+      trustZeroLeakage: "Zero Shared Data Leakage",
+      trustFbise: "FBISE & BISE Compatible",
+      trustOneLink: "1Link 1Bill Ready",
       featuresHeading: "Engineered Specifically for Modern Education",
-      featuresSubtitle: "Everything your institution needs to eliminate paperwork and streamline administration.",
+      featuresSubtitle: "Purpose-built architecture adhering to all 42 specifications from the official Pakistan School Operating Standard.",
       feat1Title: "Strict Tenant Isolation",
-      feat1Desc: "Every school runs on its own isolated subdomain with dedicated branding, custom sessions, and zero data leakage.",
+      feat1Desc: "Every school runs on its own isolated subdomain with dedicated branding, custom schemas, and zero cross-tenant data leakage via PostgreSQL Row-Level Security.",
+      feat1Tag: "Row-Level Security Active",
       feat2Title: "Academic Sessions & Terms",
-      feat2Desc: "Manage historical records across multiple sessions, term examinations, and grade promotions seamlessly.",
+      feat2Desc: "Manage historical records across multiple sessions, term examinations, and grade promotions seamlessly with non-destructive transitions.",
+      feat2Tag: "Automated Term Archives",
       feat3Title: "Fine-Grained Role Permissions",
-      feat3Desc: "Tailored permission matrices for Admins, Headmasters, Teachers, Accountants, Students, and Parents.",
+      feat3Desc: "Tailored permission matrices for Admins, Headmasters, Teachers, Accountants, Students, and Parents with instant revocations.",
+      feat3Tag: "6 Specialized Portals",
       feat4Title: "Fee Challans & Pakistani Gateways",
-      feat4Desc: "Automated 1Link 1Bill vouchers, Easypaisa, JazzCash, and bank receipt reconciliation built-in.",
+      feat4Desc: "Automated 1Link 1Bill printable 3-copy vouchers with real-time Easypaisa, JazzCash, and bank webhook reconciliation.",
+      feat4Tag: "1Link 1Bill Integration",
       feat5Title: "Daily Attendance & Leave Management",
-      feat5Desc: "Instant attendance tracking with automated parental notifications and absence alert workflows.",
+      feat5Desc: "Instant attendance tracking with automated parental SMS/WhatsApp notifications and biometric device syncing.",
+      feat5Tag: "Biometric Hardware Ready",
       feat6Title: "Bilingual English & Urdu",
-      feat6Desc: "Full bidirectional UI with native Urdu typography and right-to-left layout for parents and teachers.",
+      feat6Desc: "Full bidirectional UI with native Urdu typography, Arabic support, right-to-left layout switching, and bilingual reports.",
+      feat6Tag: "نستعلیق اردو فونٹس",
+      demoRolePill: "Interactive Evaluation Access",
+      demoRoleHeading: "Test Every Institutional Role in Seconds",
+      demoRoleSubtitle: "Explore the dedicated portals with pre-populated Pakistani curricula, fee structures, and attendance records.",
+      roleAdmin: "Admin",
+      roleAdminSub: "Full Control",
+      roleHeadmaster: "Headmaster",
+      roleHeadmasterSub: "Academics",
+      roleTeacher: "Teacher",
+      roleTeacherSub: "Class & Marks",
+      roleAccountant: "Accountant",
+      roleAccountantSub: "1Bill Vouchers",
+      roleStudent: "Student",
+      roleStudentSub: "Courses & Tests",
+      roleParent: "Parent",
+      roleParentSub: "Multi-Child",
       pricingHeading: "Transparent Institutional Plans",
       pricingSubtitle: "Evaluation preview tiers. Free access during public preview beta.",
       plan1Name: "Starter School",
@@ -104,6 +220,40 @@ export const translations: Record<Language, Translations> = {
       plan3Desc: "Multi-campus networks, custom vanity domains, dedicated backups, and SLA support.",
       demoBanner: "Want to try before signing up? Pre-configured demonstration schools are live right now.",
       demoButton: "Access Demo Accounts",
+    },
+    admin: {
+      dashboardTitle: "Dashboard Overview",
+      welcomeBack: "Welcome back",
+      totalStudents: "Total Students",
+      totalFaculty: "Total Teachers & Staff",
+      activeFaculty: "Active Faculty",
+      monthlyFees: "Monthly Fees Collected",
+      billingPercent: "92% of billing",
+      attendanceToday: "Attendance Today",
+      biometricsLive: "● Biometrics Live",
+      academicsTitle: "Academics & Curriculum",
+      scheduleToday: "Today's Schedule: 45 classes",
+      activeTerms: "Active Terms",
+      accountsTitle: "Accounts Department",
+      feeDefaulters: "Fee Defaulters",
+      onlineChallans: "Online Challans Paid",
+      hrTitle: "HR & Operations",
+      leaveRequests: "Total Staff Leave Requests",
+      biometricLogs: "Biometric Logs",
+      campusNetwork: "Multi-Tenant & Campus Network",
+      chartTitle: "Monthly Registration & Fee Trends",
+      chartSubtitle: "Real-time collections vs new admissions across sessions",
+      notificationsTitle: "Notifications & Recent Logs",
+      searchPlaceholder: "Search modules, students...",
+      logout: "Log Out",
+      navDashboard: "Dashboard",
+      navAcademics: "Academics",
+      navStudents: "Students & Enrollment",
+      navFinance: "Finance & Fee Challans",
+      navAttendance: "Attendance & Leaves",
+      navCampuses: "Multi-Campus Admin",
+      navPermissions: "User Permissions",
+      navSettings: "Settings",
     },
     login: {
       title: "Sign in to Your School",
@@ -140,25 +290,66 @@ export const translations: Record<Language, Translations> = {
   },
   ur: {
     appName: "اسکول ساس کلاؤڈ",
+    nav: {
+      features: "خصوصیات",
+      allModules: "تمام ماڈیولز اور تفصیلات",
+      allModulesSub: "42 خصوصیات",
+      forSchools: "کثیر کیمپس اسکولز",
+      forTeachers: "اساتذہ و تدریسی شعبہ",
+      forParents: "والدین و فیس چالان",
+      pricing: "قیمتیں",
+      demo: "ڈیمو پورٹل",
+      signIn: "سائن ان کریں",
+      registerSchool: "اسکول رجسٹر کریں",
+      goToDashboard: "ڈیش بورڈ پر جائیں",
+    },
     landing: {
-      heroTitle: "پاکستانی اسکولوں کے لیے جدید ترین کلاؤڈ سسٹم",
-      heroSubtitle: "اسکول کے تمام انتظامی امور: علیحدہ سب ڈومین، خودکار فیس چالان، کیمپس کا انتظام اور اردو/انگریزی پورٹل۔",
+      heroPill: "اسکول کلاؤڈ 2026 • جدید ترین ملٹی ٹیننٹ اسکول سسٹم",
+      heroTitle: "پاکستانی اسکولوں کے لیے جدید ترین کلاؤڈ",
+      heroTitleHighlight: "آپریٹنگ سسٹم",
+      heroSubtitle: "اسکول کے تمام انتظامی امور: علیحدہ سب ڈومین، خودکار 1لنک فیس چالان، کیمپس کا انتظام اور مکمل اردو و انگریزی پورٹلز۔",
       ctaRegister: "اپنا اسکول ابھی رجسٹر کریں",
       ctaDemo: "ڈیمو پورٹل دیکھیں",
+      ctaDashboard: "ایڈمن ڈیش بورڈ پر جائیں",
+      ctaSwitchAccount: "اکاؤنٹ تبدیل کریں / سائن ان",
+      trustZeroLeakage: "محفوظ ترین ذاتی ڈیٹا بیس",
+      trustFbise: "فیڈرل و تمام تعلیمی بورڈز کے موافق",
+      trustOneLink: "1لنک 1بل آن لائن ادائیگیاں",
       featuresHeading: "جدید تعلیمی اداروں کی ضروریات کے عین مطابق",
       featuresSubtitle: "کاغذی کارروائی کو ختم کریں اور اسکول کے تمام شعبوں کو ایک جدید کلاؤڈ سسٹم پر لائیں۔",
-      feat1Title: "مکمل محفوظ ڈیٹا اور سب ڈومین",
-      feat1Desc: "ہر اسکول کو اس کی ذاتی سب ڈومین اور الگ محفوظ ڈیٹا بیس دی جاتی ہے۔",
+      feat1Title: "مکمل محفوظ ڈیٹا اور الگ سب ڈومین",
+      feat1Desc: "ہر اسکول کو اس کی ذاتی سب ڈومین اور الگ محفوظ ڈیٹا بیس دی جاتی ہے جس میں زیرو ڈیٹا لیکیج یقینی ہے۔",
+      feat1Tag: "رو لیول سیکیورٹی فعال",
       feat2Title: "تعلیمی سیشن اور امتحانات",
       feat2Desc: "تعلیمی سیشنز کا انتظام، نتائج، اور طلبہ کی اگلی جماعتوں میں ترقی کی خودکار ترتیبات۔",
+      feat2Tag: "خودکار سیشن آرکائیوز",
       feat3Title: "مخصوص کردار اور اختیارات",
       feat3Desc: "پرنسپل، اساتذہ، اکاؤنٹنٹ، طلبہ اور والدین کے لیے الگ الگ اختیارات اور انٹرفیس۔",
+      feat3Tag: "6 مخصوص پورٹلز",
       feat4Title: "فیس چالان اور آن لائن ادائیگیاں",
-      feat4Desc: "ون لنک، ایزی پیسہ، جاز کیش اور بینک چالان کے ذریعے فوری اور خودکار فیس وصولی۔",
+      feat4Desc: "ون لنک، ایزی پیسہ، جاز کیش اور بینک چالان کے ذریعے فوری اور خودکار فیس وصولی اور 3 کاپی واؤچر۔",
+      feat4Tag: "1لنک 1بل انٹیگریشن",
       feat5Title: "روزانہ حاضری اور ایس ایم ایس",
-      feat5Desc: "طلبہ اور اساتذہ کی ڈیجیٹل حاضری اور والدین کو فوری غیر حاضری کی اطلاع۔",
-      feat6Title: "مکمل اردو سپورٹ",
-      feat6Desc: "والدین اور عملے کے لیے مکمل دائیں سے بائیں اردو رسم الخط اور آسان انٹرفیس۔",
+      feat5Desc: "طلبہ اور اساتذہ کی ڈیجیٹل و بائیومیٹرک حاضری اور والدین کو فوری ایس ایم ایس اطلاع۔",
+      feat5Tag: "بائیو میٹرک مشین ہم آہنگ",
+      feat6Title: "مکمل اردو اور عربی سپورٹ",
+      feat6Desc: "والدین اور عملے کے لیے مکمل دائیں سے بائیں اردو نستعلیق رسم الخط اور آسان انٹرفیس۔",
+      feat6Tag: "نستعلیق اردو فونٹس",
+      demoRolePill: "فوری آزمائشی رسائی",
+      demoRoleHeading: "ہر تعلیمی کردار کو سیکنڈوں میں آزمائیں",
+      demoRoleSubtitle: "پاکستانی نصاب، فیس ڈھانچے اور حاضری کے ریکارڈ کے ساتھ مختلف پورٹلز ملاحظہ کریں۔",
+      roleAdmin: "ایڈمن",
+      roleAdminSub: "مکمل کنٹرول",
+      roleHeadmaster: "ہیڈ ماسٹر",
+      roleHeadmasterSub: "تعلیمی شعبہ",
+      roleTeacher: "استاد",
+      roleTeacherSub: "کلاس و امتحانات",
+      roleAccountant: "اکاؤنٹنٹ",
+      roleAccountantSub: "فیس چالان",
+      roleStudent: "طالب علم",
+      roleStudentSub: "کورسز و ٹیسٹ",
+      roleParent: "والدین",
+      roleParentSub: "تمام بچے",
       pricingHeading: "آسان اور شفاف قیمتیں",
       pricingSubtitle: "آزمائشی مدت کے دوران تمام سہولیات مفت دستیاب ہیں۔",
       plan1Name: "بنیادی اسکول",
@@ -172,6 +363,40 @@ export const translations: Record<Language, Translations> = {
       plan3Desc: "ملٹی برانچ اسکول چینز، کسٹم ڈومین اور مخصوص کلاؤڈ بیک اپس۔",
       demoBanner: "رجسٹر کرنے سے پہلے سسٹم آزمانا چاہتے ہیں؟ تیار شدہ ڈیمو اسکولز ابھی آن لائن ہیں۔",
       demoButton: "ڈیمو اکاؤنٹس آزمائیں",
+    },
+    admin: {
+      dashboardTitle: "ایڈمنسٹریٹر ڈیش بورڈ",
+      welcomeBack: "خوش آمدید",
+      totalStudents: "کل طلباء و طالبات",
+      totalFaculty: "کل اساتذہ و عملہ",
+      activeFaculty: "فعال تدریسی عملہ",
+      monthlyFees: "ماہانہ فیس وصولی",
+      billingPercent: "92 فیصد وصول شدہ",
+      attendanceToday: "آج کی حاضری",
+      biometricsLive: "● بائیو میٹرک فعال",
+      academicsTitle: "تعلیمی شعبہ و نصاب",
+      scheduleToday: "آج کا شیڈول: 45 کلاسز",
+      activeTerms: "فعال ٹرمز",
+      accountsTitle: "شعبہ اکاؤنٹس و مالیات",
+      feeDefaulters: "واجب الادا فیس طلبہ",
+      onlineChallans: "آن لائن ادا شدہ چالان",
+      hrTitle: "انسانی وسائل و عملہ",
+      leaveRequests: "چھٹی کی درخواستیں",
+      biometricLogs: "بائیو میٹرک لاگز",
+      campusNetwork: "کثیر کیمپس نیٹ ورک",
+      chartTitle: "ماہانہ داخلے اور فیس رجحانات",
+      chartSubtitle: "تمام سیشنز میں فیس وصولی اور نئے داخلوں کا جائزہ",
+      notificationsTitle: "اطلاعات و تازہ ترین ریکارڈ",
+      searchPlaceholder: "ماڈیولز، طلباء تلاش کریں...",
+      logout: "لاگ آؤٹ",
+      navDashboard: "ڈیش بورڈ",
+      navAcademics: "تعلیمی شعبہ",
+      navStudents: "طلباء و داخلے",
+      navFinance: "مالیات و فیس چالان",
+      navAttendance: "حاضری و چھٹیاں",
+      navCampuses: "ملٹی کیمپس ایڈمن",
+      navPermissions: "صارفین کے اختیارات",
+      navSettings: "ترتیبات",
     },
     login: {
       title: "اسکول پورٹل میں داخل ہوں",
@@ -208,27 +433,68 @@ export const translations: Record<Language, Translations> = {
   },
   ar: {
     appName: "سحابة SchoolSaaS",
+    nav: {
+      features: "المميزات",
+      allModules: "جميع الوحدات والمواصفات",
+      allModulesSub: "42 مواصفة",
+      forSchools: "للمدارس متعددة الفروع",
+      forTeachers: "للمعلمين والشؤون الأكاديمية",
+      forParents: "لأولياء الأمور وفواتير الرسوم",
+      pricing: "الأسعار",
+      demo: "عرض تجريبي",
+      signIn: "تسجيل الدخول",
+      registerSchool: "تسجيل مدرسة جديدة",
+      goToDashboard: "الانتقال إلى لوحة التحكم",
+    },
     landing: {
-      heroTitle: "نظام التشغيل المتطور للمدارس الحديثة",
-      heroSubtitle: "إدارة مؤسسية شاملة: نطاقات فرعية خاصة، إيصالات رسوم دفع إلكترونية، إدارة متعددة الفروع، وبوابات ثنائية اللغة تدعم العربية والإنجليزية.",
+      heroPill: "سحابة المدارس 2026 • بنية سحابية متعددة المؤسسات ومعزولة بالكامل",
+      heroTitle: "نظام التشغيل المتطور للجيل القادم من",
+      heroTitleHighlight: "المدارس والمؤسسات التعليمية",
+      heroSubtitle: "إدارة مؤسسية شاملة: نطاقات فرعية خاصة، إيصالات رسوم دفع إلكترونية ذكية، إدارة الفروع المتعددة، وبوابات عربية وإنجليزية متكاملة.",
       ctaRegister: "سجل مدرستك الآن",
       ctaDemo: "استكشف البوابات التجريبية",
-      featuresHeading: "مصمم خصيصاً للتعليم المعاصر",
-      featuresSubtitle: "كل ما تحتاجه مؤسستك للتخلص من المعاملات الورقية وتسهيل الإدارة.",
-      feat1Title: "عزل تام لبيانات المدارس",
-      feat1Desc: "تعمل كل مدرسة على نطاق فرعي معزول تماماً مع هوية خاصة وضمان عدم تسرب البيانات.",
-      feat2Title: "الفصول والسنوات الدراسية",
-      feat2Desc: "إدارة السجلات التاريخية عبر فصول دراسية متعددة وترقية الطلاب بسلاسة.",
-      feat3Title: "صلاحيات دقيقة للأدوار",
-      feat3Desc: "مصفوفة صلاحيات مخصصة للمديرين، المعلمين، المحاسبين، الطلاب، وأولياء الأمور.",
-      feat4Title: "إيصالات الرسوم وبوابات الدفع",
-      feat4Desc: "إنشاء إيصالات رسوم ذكية ومطابقة الدفع المالي الرقمي فورياً.",
+      ctaDashboard: "لوحة تحكم الإدارة العليا",
+      ctaSwitchAccount: "تبديل الحساب / تسجيل الدخول",
+      trustZeroLeakage: "عزل تام لبيانات كل مدرسة",
+      trustFbise: "متوافق مع المعايير التعليمية الرسمية",
+      trustOneLink: "بوابات الدفع الإلكتروني المباشر",
+      featuresHeading: "مصمم خصيصاً للتعليم المعاصر والتطور الإداري",
+      featuresSubtitle: "كل ما تحتاجه مؤسستك للتخلص من المعاملات الورقية وتسهيل الإدارة الميدانية والأكاديمية.",
+      feat1Title: "عزل تام لبيانات المدارس والنطاقات",
+      feat1Desc: "تعمل كل مدرسة على نطاق فرعي معزول تماماً مع هوية مخصصة وأمان على مستوى الصفوف في قاعدة البيانات.",
+      feat1Tag: "الأمان على مستوى السجلات نشط",
+      feat2Title: "الفصول والسنوات الدراسية والأرشيف",
+      feat2Desc: "إدارة السجلات التاريخية عبر فصول دراسية متعددة وترقية الطلاب بسلاسة مع الحفاظ على الأرشيف.",
+      feat2Tag: "أرشفة فصول دراسية آلية",
+      feat3Title: "صلاحيات دقيقة ومصفوفة أمان",
+      feat3Desc: "مصفوفة صلاحيات مخصصة للمديرين، المعلمين، المحاسبين، الطلاب، وأولياء الأمور مع سجل تدقيق فوري.",
+      feat3Tag: "6 بوابات متخصصة",
+      feat4Title: "إيصالات الرسوم والتحصيل الإلكتروني",
+      feat4Desc: "إنشاء إيصالات رسوم بثلاث نسخ آلية مع مطابقة فورية للمدفوعات الرقمية والتحويلات المصرفية.",
+      feat4Tag: "التحصيل المالي الرقمي",
       feat5Title: "إدارة الحضور والإجازات اليومية",
-      feat5Desc: "تتبع فوري للحضور مع إشعارات آلية لأولياء الأمور وتوافق مع أجهزة البصمة.",
-      feat6Title: "دعم ثنائي للغة العربية والإنجليزية",
-      feat6Desc: "واجهة مستخدم متكاملة باتجاه من اليمين إلى اليسار (RTL) مع خطوط عربية أصيلة.",
-      pricingHeading: "باقات اشتراك مؤسسية واضحة",
-      pricingSubtitle: "خيارات تسعير مرنة تناسب المدارس الفردية وشبكات المدارس الكبرى.",
+      feat5Desc: "تتبع فوري للحضور مع إشعارات آلية فورية لأولياء الأمور وتوافق تام مع أجهزة البصمة والدوام.",
+      feat5Tag: "متوافق مع أجهزة البصمة",
+      feat6Title: "دعم ثنائي كامل للغة العربية والإنجليزية",
+      feat6Desc: "واجهة مستخدم متكاملة باتجاه من اليمين إلى اليسار (RTL) مع خطوط عربية واضحة وتقارير ثنائية اللغة.",
+      feat6Tag: "دعم العربية بالكامل (RTL)",
+      demoRolePill: "معاينة فورية بدون تسجيل",
+      demoRoleHeading: "اختبر كل دور إداري في ثوانٍ معدودة",
+      demoRoleSubtitle: "استكشف البوابات المتخصصة مع بيانات جاهزة للمناهج، الرسوم الدراسية، وسجلات الحضور.",
+      roleAdmin: "المشرف العام",
+      roleAdminSub: "تحكم كامل",
+      roleHeadmaster: "المدير الأكاديمي",
+      roleHeadmasterSub: "الشؤون التعليمية",
+      roleTeacher: "المعلم",
+      roleTeacherSub: "الحصص والدرجات",
+      roleAccountant: "المحاسب",
+      roleAccountantSub: "الرسوم والفواتير",
+      roleStudent: "الطالب",
+      roleStudentSub: "المواد والاختبارات",
+      roleParent: "ولي الأمر",
+      roleParentSub: "متابعة الأبناء",
+      pricingHeading: "باقات اشتراك مؤسسية واضحة وشفافة",
+      pricingSubtitle: "خيارات تسعير مرنة تناسب المدارس المستقلة وشبكات المدارس الكبرى.",
       plan1Name: "المدرسة الأساسية",
       plan1Price: "15,000 روبية / شهر",
       plan1Desc: "تصل إلى 600 طالب. فرع واحد، حضور، اختبارات، ورسوم أساسية.",
@@ -239,7 +505,41 @@ export const translations: Record<Language, Translations> = {
       plan3Price: "75,000 روبية / شهر",
       plan3Desc: "فروع غير محدودة، لوحة تحكم مركزية للإدارة العليا، وتقارير موحدة.",
       demoBanner: "وضع التقييم التجريبي الفوري متاح لجميع الأدوار.",
-      demoButton: "دخول",
+      demoButton: "دخول تجريبي",
+    },
+    admin: {
+      dashboardTitle: "لوحة الإدارة التنفيذية",
+      welcomeBack: "مرحباً بك",
+      totalStudents: "إجمالي الطلاب",
+      totalFaculty: "الكادر التعليمي والموظفون",
+      activeFaculty: "معلم وموظف نشط",
+      monthlyFees: "الرسوم الشهرية المحصلة",
+      billingPercent: "92% من إجمالي المطالبات",
+      attendanceToday: "نسبة الحضور اليوم",
+      biometricsLive: "● البصمة متصلة ومباشرة",
+      academicsTitle: "الشؤون الأكاديمية والجدول",
+      scheduleToday: "جدول اليوم: 45 حصة دراسية",
+      activeTerms: "الفصول النشطة",
+      accountsTitle: "الشؤون المالية والمحاسبة",
+      feeDefaulters: "المتأخرون عن سداد الرسوم",
+      onlineChallans: "نسبة السداد الإلكتروني",
+      hrTitle: "الموارد البشرية والإجازات",
+      leaveRequests: "طلبات إجازات الموظفين",
+      biometricLogs: "سجلات الدخول الذكية",
+      campusNetwork: "شبكة الفروع والمؤسسات",
+      chartTitle: "إحصائيات التسجيل والتحصيل المالي الشهري",
+      chartSubtitle: "مقارنة حية بين تحصيل الرسوم والقبول الجديد على مدار العام",
+      notificationsTitle: "الإشعارات والتحديثات المباشرة",
+      searchPlaceholder: "بحث في الوحدات والطلاب والملفات...",
+      logout: "تسجيل الخروج",
+      navDashboard: "لوحة التحكم",
+      navAcademics: "الأكاديميا والتعليم",
+      navStudents: "الطلاب والتسجيل",
+      navFinance: "المالية وفواتير الرسوم",
+      navAttendance: "الحضور والدوام",
+      navCampuses: "إدارة الفروع المتعددة",
+      navPermissions: "صلاحيات المستخدمين",
+      navSettings: "الإعدادات العامة",
     },
     login: {
       title: "تسجيل الدخول إلى مدرستك",

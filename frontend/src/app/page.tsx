@@ -33,14 +33,27 @@ export default function LandingPage() {
 
   useEffect(() => {
     setIsLoggedIn(!!getAccessToken());
+    try {
+      const saved = localStorage.getItem("app_lang") as Language;
+      if (saved && (saved === "en" || saved === "ur" || saved === "ar")) {
+        setLang(saved);
+      }
+    } catch (e) {}
   }, []);
+
+  const handleLangChange = (newLang: Language) => {
+    setLang(newLang);
+    try {
+      localStorage.setItem("app_lang", newLang);
+    } catch (e) {}
+  };
 
   return (
     <div dir={isRTL ? "rtl" : "ltr"} className="min-h-screen flex flex-col bg-slate-50 dark:bg-[#0b0f19] text-slate-900 dark:text-slate-100 transition-colors">
       {/* Top Navigation Bar */}
 
       {/* 2. Top Navigation Bar */}
-      <PublicNavbar lang={lang} onLanguageChange={setLang} />
+      <PublicNavbar lang={lang} onLanguageChange={handleLangChange} />
 
       {/* 3. Hero Section */}
       <main className="flex-1">
@@ -55,20 +68,20 @@ export default function LandingPage() {
               {/* Pill badge */}
               <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 text-xs font-semibold shadow-sm">
                 <Sparkles className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                <span>School Cloud 2026 • Production-Ready Multi-Tenant Architecture</span>
+                <span>{t.landing.heroPill}</span>
               </div>
 
               {/* Bold Headline */}
               <h1 className="text-3xl sm:text-5xl lg:text-5xl font-black tracking-tight leading-[1.15] text-slate-900 dark:text-white">
-                The Next-Generation Operating System for{" "}
+                {t.landing.heroTitle}{" "}
                 <span className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
-                  Pakistani Schools
+                  {t.landing.heroTitleHighlight}
                 </span>
               </h1>
 
               {/* Subtitle */}
               <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed max-w-2xl mx-auto lg:mx-0">
-                Complete institutional management: private subdomains, automated fee vouchers with Pakistani gateways, multi-campus governance, and dual English/Urdu portals.
+                {t.landing.heroSubtitle}
               </p>
 
               {/* Action Buttons */}
@@ -80,8 +93,8 @@ export default function LandingPage() {
                       className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:from-indigo-700 hover:to-purple-700 text-white text-sm font-bold shadow-lg shadow-indigo-500/30 transition transform hover:-translate-y-0.5 flex items-center justify-center gap-2"
                     >
                       <LayoutDashboard className="w-5 h-5" />
-                      <span>Go to Admin Dashboard</span>
-                      <ArrowRight className="w-4 h-4" />
+                      <span>{t.landing.ctaDashboard}</span>
+                      <ArrowRight className="w-4 h-4 rtl:rotate-180" />
                     </Link>
 
                     <Link
@@ -89,7 +102,7 @@ export default function LandingPage() {
                       className="w-full sm:w-auto px-7 py-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm font-bold shadow-sm transition flex items-center justify-center gap-2"
                     >
                       <span>🔄</span>
-                      <span>Switch Account / Sign In</span>
+                      <span>{t.landing.ctaSwitchAccount}</span>
                     </Link>
                   </>
                 ) : (
@@ -99,7 +112,7 @@ export default function LandingPage() {
                       className="w-full sm:w-auto px-7 py-3.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-sm font-bold shadow-lg shadow-indigo-500/30 transition transform hover:-translate-y-0.5 flex items-center justify-center gap-2"
                     >
                       <span>🚀</span>
-                      <span>Register Your School Now</span>
+                      <span>{t.landing.ctaRegister}</span>
                     </Link>
 
                     <Link
@@ -107,7 +120,7 @@ export default function LandingPage() {
                       className="w-full sm:w-auto px-7 py-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm font-bold shadow-sm transition flex items-center justify-center gap-2"
                     >
                       <span>🔑</span>
-                      <span>Explore Demo Portals</span>
+                      <span>{t.landing.ctaDemo}</span>
                     </Link>
                   </>
                 )}
@@ -117,15 +130,15 @@ export default function LandingPage() {
               <div className="pt-4 flex flex-wrap items-center justify-center lg:justify-start gap-6 text-xs text-slate-500 dark:text-slate-400 font-medium">
                 <span className="flex items-center gap-1.5">
                   <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                  Zero Shared Data Leakage
+                  {t.landing.trustZeroLeakage}
                 </span>
                 <span className="flex items-center gap-1.5">
                   <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                  FBISE & BISE Compatible
+                  {t.landing.trustFbise}
                 </span>
                 <span className="flex items-center gap-1.5">
                   <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                  1Link 1Bill Ready
+                  {t.landing.trustOneLink}
                 </span>
               </div>
             </div>
@@ -154,10 +167,10 @@ export default function LandingPage() {
         <section className="py-20 px-4 sm:px-6 max-w-7xl mx-auto border-t border-slate-200/80 dark:border-slate-800/80">
           <div className="text-center max-w-3xl mx-auto mb-14 space-y-3">
             <h2 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-              Engineered Specifically for Modern Education
+              {t.landing.featuresHeading}
             </h2>
             <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400">
-              Purpose-built architecture adhering to all 42 specifications from the official Pakistan School Operating Standard.
+              {t.landing.featuresSubtitle}
             </p>
           </div>
 
@@ -168,14 +181,14 @@ export default function LandingPage() {
                 🏢
               </div>
               <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">
-                Strict Tenant Isolation
+                {t.landing.feat1Title}
               </h3>
               <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                Every school runs on its own isolated subdomain with dedicated branding, custom schemas, and zero cross-tenant data leakage via PostgreSQL Row-Level Security.
+                {t.landing.feat1Desc}
               </p>
               <div className="mt-4 pt-3 border-t border-orange-100 dark:border-orange-950/60 flex items-center justify-between text-[11px] font-semibold text-orange-600 dark:text-orange-400">
-                <span>Row-Level Security Active</span>
-                <span>Subdomain Routing →</span>
+                <span>{t.landing.feat1Tag}</span>
+                <span>→</span>
               </div>
             </div>
 
@@ -185,14 +198,14 @@ export default function LandingPage() {
                 📅
               </div>
               <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">
-                Academic Sessions & Terms
+                {t.landing.feat2Title}
               </h3>
               <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                Manage historical records across multiple sessions, term examinations, and grade promotions seamlessly with non-destructive session transitions.
+                {t.landing.feat2Desc}
               </p>
               <div className="mt-4 pt-3 border-t border-sky-100 dark:border-sky-950/60 flex items-center justify-between text-[11px] font-semibold text-sky-600 dark:text-sky-400">
-                <span>Automated Term Archives</span>
-                <span>FBISE / BISE Sessions →</span>
+                <span>{t.landing.feat2Tag}</span>
+                <span>→</span>
               </div>
             </div>
 
@@ -202,14 +215,14 @@ export default function LandingPage() {
                 🛡️
               </div>
               <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">
-                Fine-Grain Role Permissions
+                {t.landing.feat3Title}
               </h3>
               <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                Tailored permission matrices for Admins, Headmasters, Teachers, Accountants, Students, and Parents with instant permission revocations and audit trails.
+                {t.landing.feat3Desc}
               </p>
               <div className="mt-4 pt-3 border-t border-purple-100 dark:border-purple-950/60 flex items-center justify-between text-[11px] font-semibold text-purple-600 dark:text-purple-400">
-                <span>6 Specialized Portals</span>
-                <span>Role Matrices →</span>
+                <span>{t.landing.feat3Tag}</span>
+                <span>→</span>
               </div>
             </div>
 
@@ -219,14 +232,14 @@ export default function LandingPage() {
                 💳
               </div>
               <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">
-                Fee Challans & Pakistani Gateways
+                {t.landing.feat4Title}
               </h3>
               <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                Automated 1Link 1Bill printable 3-copy vouchers (Bank, School, Parent) with real-time Easypaisa, JazzCash, and Kuickpay payment webhook reconciliation.
+                {t.landing.feat4Desc}
               </p>
               <div className="mt-4 pt-3 border-t border-emerald-100 dark:border-emerald-950/60 flex items-center justify-between text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-                <span>1Link 1Bill Integration</span>
-                <span>Printable 3-Copy Slips →</span>
+                <span>{t.landing.feat4Tag}</span>
+                <span>→</span>
               </div>
             </div>
 
@@ -236,14 +249,14 @@ export default function LandingPage() {
                 ⏱️
               </div>
               <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">
-                Daily Attendance & Leave Management
+                {t.landing.feat5Title}
               </h3>
               <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                Instant attendance tracking with automated parental SMS/WhatsApp notifications, biometric machine syncing, and multi-tier staff leave approvals.
+                {t.landing.feat5Desc}
               </p>
               <div className="mt-4 pt-3 border-t border-rose-100 dark:border-rose-950/60 flex items-center justify-between text-[11px] font-semibold text-rose-600 dark:text-rose-400">
-                <span>Biometric Hardware Ready</span>
-                <span>Parental Alerts →</span>
+                <span>{t.landing.feat5Tag}</span>
+                <span>→</span>
               </div>
             </div>
 
@@ -253,14 +266,14 @@ export default function LandingPage() {
                 🇵🇰
               </div>
               <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">
-                Bilingual English & Urdu
+                {t.landing.feat6Title}
               </h3>
               <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                Full bidirectional UI with native Urdu typography (Nastaliq support), right-to-left layout switching, and bilingual reports for parents and teachers.
+                {t.landing.feat6Desc}
               </p>
               <div className="mt-4 pt-3 border-t border-teal-100 dark:border-teal-950/60 flex items-center justify-between text-[11px] font-semibold text-teal-600 dark:text-teal-400">
-                <span>نستعلیق اردو فونٹس</span>
-                <span>1-Click RTL Switch →</span>
+                <span>{t.landing.feat6Tag}</span>
+                <span>→</span>
               </div>
             </div>
           </div>
@@ -270,13 +283,13 @@ export default function LandingPage() {
         <section className="py-16 px-4 sm:px-6 max-w-7xl mx-auto bg-gradient-to-br from-indigo-900 via-slate-900 to-slate-950 rounded-3xl text-white p-8 sm:p-12 shadow-2xl my-8">
           <div className="max-w-3xl mx-auto text-center space-y-4">
             <span className="px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 text-xs font-bold uppercase tracking-wider">
-              Interactive Evaluation Access
+              {t.landing.demoRolePill}
             </span>
             <h2 className="text-2xl sm:text-4xl font-extrabold tracking-tight">
-              Test Every Institutional Role in Seconds
+              {t.landing.demoRoleHeading}
             </h2>
             <p className="text-xs sm:text-sm text-slate-300 max-w-xl mx-auto leading-relaxed">
-              Explore the dedicated portals with pre-populated Pakistani curricula, fee structures, and attendance records.
+              {t.landing.demoRoleSubtitle}
             </p>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 pt-6">
@@ -285,8 +298,8 @@ export default function LandingPage() {
                 className="p-3 rounded-2xl bg-slate-800/80 hover:bg-indigo-600 border border-slate-700 hover:border-indigo-500 transition text-center group"
               >
                 <div className="text-2xl mb-1 group-hover:scale-110 transition transform">👑</div>
-                <div className="text-xs font-bold">Admin</div>
-                <div className="text-[10px] text-slate-400 group-hover:text-white">Full Control</div>
+                <div className="text-xs font-bold">{t.landing.roleAdmin}</div>
+                <div className="text-[10px] text-slate-400 group-hover:text-white">{t.landing.roleAdminSub}</div>
               </Link>
 
               <Link
@@ -294,8 +307,8 @@ export default function LandingPage() {
                 className="p-3 rounded-2xl bg-slate-800/80 hover:bg-indigo-600 border border-slate-700 hover:border-indigo-500 transition text-center group"
               >
                 <div className="text-2xl mb-1 group-hover:scale-110 transition transform">🎓</div>
-                <div className="text-xs font-bold">Headmaster</div>
-                <div className="text-[10px] text-slate-400 group-hover:text-white">Academics</div>
+                <div className="text-xs font-bold">{t.landing.roleHeadmaster}</div>
+                <div className="text-[10px] text-slate-400 group-hover:text-white">{t.landing.roleHeadmasterSub}</div>
               </Link>
 
               <Link
@@ -303,8 +316,8 @@ export default function LandingPage() {
                 className="p-3 rounded-2xl bg-slate-800/80 hover:bg-indigo-600 border border-slate-700 hover:border-indigo-500 transition text-center group"
               >
                 <div className="text-2xl mb-1 group-hover:scale-110 transition transform">👨‍🏫</div>
-                <div className="text-xs font-bold">Teacher</div>
-                <div className="text-[10px] text-slate-400 group-hover:text-white">Class & Marks</div>
+                <div className="text-xs font-bold">{t.landing.roleTeacher}</div>
+                <div className="text-[10px] text-slate-400 group-hover:text-white">{t.landing.roleTeacherSub}</div>
               </Link>
 
               <Link
@@ -312,8 +325,8 @@ export default function LandingPage() {
                 className="p-3 rounded-2xl bg-slate-800/80 hover:bg-indigo-600 border border-slate-700 hover:border-indigo-500 transition text-center group"
               >
                 <div className="text-2xl mb-1 group-hover:scale-110 transition transform">💼</div>
-                <div className="text-xs font-bold">Accountant</div>
-                <div className="text-[10px] text-slate-400 group-hover:text-white">1Bill Vouchers</div>
+                <div className="text-xs font-bold">{t.landing.roleAccountant}</div>
+                <div className="text-[10px] text-slate-400 group-hover:text-white">{t.landing.roleAccountantSub}</div>
               </Link>
 
               <Link
@@ -321,8 +334,8 @@ export default function LandingPage() {
                 className="p-3 rounded-2xl bg-slate-800/80 hover:bg-indigo-600 border border-slate-700 hover:border-indigo-500 transition text-center group"
               >
                 <div className="text-2xl mb-1 group-hover:scale-110 transition transform">🎒</div>
-                <div className="text-xs font-bold">Student</div>
-                <div className="text-[10px] text-slate-400 group-hover:text-white">Courses & Tests</div>
+                <div className="text-xs font-bold">{t.landing.roleStudent}</div>
+                <div className="text-[10px] text-slate-400 group-hover:text-white">{t.landing.roleStudentSub}</div>
               </Link>
 
               <Link
@@ -330,8 +343,8 @@ export default function LandingPage() {
                 className="p-3 rounded-2xl bg-slate-800/80 hover:bg-indigo-600 border border-slate-700 hover:border-indigo-500 transition text-center group"
               >
                 <div className="text-2xl mb-1 group-hover:scale-110 transition transform">👨‍👩‍👧</div>
-                <div className="text-xs font-bold">Parent</div>
-                <div className="text-[10px] text-slate-400 group-hover:text-white">Multi-Child</div>
+                <div className="text-xs font-bold">{t.landing.roleParent}</div>
+                <div className="text-[10px] text-slate-400 group-hover:text-white">{t.landing.roleParentSub}</div>
               </Link>
             </div>
           </div>

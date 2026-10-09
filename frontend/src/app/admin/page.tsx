@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { apiRequest, getAccessToken } from "@/lib/api";
+import { Language, translations } from "@/lib/translations";
 import {
   Users,
   GraduationCap,
@@ -24,9 +25,28 @@ import {
 } from "lucide-react";
 
 export default function AdminDashboardPage() {
+  const [lang, setLang] = useState<Language>("en");
   const [user, setUser] = useState<any>(null);
   const [school, setSchool] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+
+  const t = translations[lang];
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("app_lang") as Language;
+      if (saved && (saved === "en" || saved === "ur" || saved === "ar")) {
+        setLang(saved);
+      }
+    } catch (e) {}
+  }, []);
+
+  const handleLanguageChange = (newLang: Language) => {
+    setLang(newLang);
+    try {
+      localStorage.setItem("app_lang", newLang);
+    } catch (e) {}
+  };
 
   useEffect(() => {
     const loadTenant = async () => {
@@ -113,21 +133,23 @@ export default function AdminDashboardPage() {
 
   // Grouped Bar Chart data across Jan - Jun
   const chartData = [
-    { month: "Jan", pkr: 45, student: 65, expense: 30 },
-    { month: "Feb", pkr: 60, student: 80, expense: 48 },
-    { month: "Mar", pkr: 52, student: 72, expense: 35 },
-    { month: "Apr", pkr: 68, student: 70, expense: 50 },
-    { month: "May", pkr: 82, student: 48, expense: 65 },
-    { month: "Jun", pkr: 94, student: 64, expense: 58 },
+    { month: lang === "ur" ? "جنوری" : lang === "ar" ? "يناير" : "Jan", pkr: 45, student: 65, expense: 30 },
+    { month: lang === "ur" ? "فروری" : lang === "ar" ? "فبراير" : "Feb", pkr: 60, student: 80, expense: 48 },
+    { month: lang === "ur" ? "مارچ" : lang === "ar" ? "مارس" : "Mar", pkr: 52, student: 72, expense: 35 },
+    { month: lang === "ur" ? "اپریل" : lang === "ar" ? "أبريل" : "Apr", pkr: 68, student: 70, expense: 50 },
+    { month: lang === "ur" ? "مئی" : lang === "ar" ? "مايو" : "May", pkr: 82, student: 48, expense: 65 },
+    { month: lang === "ur" ? "جون" : lang === "ar" ? "يونيو" : "Jun", pkr: 94, student: 64, expense: 58 },
   ];
 
   return (
     <AppShell
       activeRole="admin"
-      title="Dashboard Overview"
+      title={t.admin.dashboardTitle}
       userName={user?.full_name || user?.username || "Admin Account"}
       schoolName={school?.name || "SchoolSaaS Cloud"}
       schoolSlug={school?.slug || "portal"}
+      lang={lang}
+      onLanguageChange={handleLanguageChange}
     >
       <div className="space-y-6">
         {/* ROW 1: 4 Metric Stat Cards matching Image 2 */}
@@ -135,7 +157,7 @@ export default function AdminDashboardPage() {
           {/* Card 1: Total Students */}
           <div className="p-5 rounded-2xl bg-[#161e31] border border-slate-800/90 shadow-sm relative overflow-hidden group hover:border-slate-700 transition">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-400">Total Students</span>
+              <span className="text-xs font-semibold text-slate-400">{t.admin.totalStudents}</span>
               <div className="w-8 h-8 rounded-xl bg-emerald-950/60 border border-emerald-800/40 text-emerald-400 flex items-center justify-center">
                 <Users className="w-4 h-4" />
               </div>
@@ -152,28 +174,28 @@ export default function AdminDashboardPage() {
           {/* Card 2: Total Teachers & Staff */}
           <div className="p-5 rounded-2xl bg-[#161e31] border border-slate-800/90 shadow-sm relative overflow-hidden group hover:border-slate-700 transition">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-400">Total Teachers & Staff</span>
+              <span className="text-xs font-semibold text-slate-400">{t.admin.totalFaculty}</span>
               <div className="w-8 h-8 rounded-xl bg-amber-950/60 border border-amber-800/40 text-amber-400 flex items-center justify-center">
                 <Users className="w-4 h-4" />
               </div>
             </div>
             <div className="mt-3 flex items-baseline gap-2">
               <span className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">348</span>
-              <span className="text-[11px] font-medium text-slate-400">Active Faculty</span>
+              <span className="text-[11px] font-medium text-slate-400">{t.admin.activeFaculty}</span>
             </div>
           </div>
 
           {/* Card 3: Monthly Fees Collected */}
           <div className="p-5 rounded-2xl bg-gradient-to-r from-indigo-700 via-purple-700 to-indigo-800 border border-indigo-500/30 shadow-md relative overflow-hidden text-white">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-indigo-100">Monthly Fees Collected</span>
+              <span className="text-xs font-semibold text-indigo-100">{t.admin.monthlyFees}</span>
               <div className="w-8 h-8 rounded-xl bg-white/20 text-white flex items-center justify-center">
                 <CreditCard className="w-4 h-4" />
               </div>
             </div>
             <div className="mt-3 flex items-baseline gap-2">
               <span className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">PKR 4.8M</span>
-              <span className="text-[11px] font-semibold text-indigo-200">92% of billing</span>
+              <span className="text-[11px] font-semibold text-indigo-200">{t.admin.billingPercent}</span>
             </div>
           </div>
 
@@ -181,14 +203,14 @@ export default function AdminDashboardPage() {
           <div className="p-5 rounded-2xl bg-[#161e31] border border-slate-800/90 shadow-sm flex items-center justify-between relative overflow-hidden group hover:border-slate-700 transition">
             <div>
               <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-400">
-                <span>Attendance Today</span>
+                <span>{t.admin.attendanceToday}</span>
                 <Clock className="w-3.5 h-3.5 text-cyan-400" />
               </div>
               <div className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight mt-3">
                 94.2%
               </div>
               <div className="text-[10px] text-emerald-400 font-medium mt-1">
-                ● Biometrics Live
+                {t.admin.biometricsLive}
               </div>
             </div>
             <div className="flex items-center justify-center">
@@ -202,18 +224,18 @@ export default function AdminDashboardPage() {
           {/* Card 1: Academics & Curriculum */}
           <div className="p-5 rounded-2xl bg-[#161e31] border border-slate-800/90 shadow-sm space-y-4">
             <div className="flex items-center justify-between">
-              <span className="font-bold text-xs text-white">Academics & Curriculum</span>
+              <span className="font-bold text-xs text-white">{t.admin.academicsTitle}</span>
               <GraduationCap className="w-4 h-4 text-indigo-400" />
             </div>
 
             <div className="p-3 rounded-xl bg-[#111827] border border-slate-800 space-y-1">
-              <div className="text-[11px] text-slate-400">Today's Schedule:</div>
+              <div className="text-[11px] text-slate-400">{t.admin.scheduleToday}</div>
               <div className="text-sm font-bold text-indigo-400">45 classes</div>
-              <div className="text-[10px] text-slate-500">Active Terms: 45 classes</div>
+              <div className="text-[10px] text-slate-500">{t.admin.activeTerms}: 45 classes</div>
             </div>
 
             <div className="space-y-1.5">
-              <div className="text-[10px] text-slate-400 font-medium">Active Terms</div>
+              <div className="text-[10px] text-slate-400 font-medium">{t.admin.activeTerms}</div>
               <div className="flex items-center gap-2">
                 <div className="w-7 h-7 rounded-lg bg-blue-600/30 border border-blue-500/40 text-blue-400 flex items-center justify-center text-xs">
                   <GraduationCap className="w-3.5 h-3.5" />
@@ -237,13 +259,13 @@ export default function AdminDashboardPage() {
           {/* Card 2: Accounts Department with Sparkline */}
           <div className="p-5 rounded-2xl bg-[#161e31] border border-slate-800/90 shadow-sm space-y-3">
             <div className="flex items-center justify-between">
-              <span className="font-bold text-xs text-white">Accounts Department</span>
+              <span className="font-bold text-xs text-white">{t.admin.accountsTitle}</span>
               <CreditCard className="w-4 h-4 text-cyan-400" />
             </div>
 
             <div className="flex items-center justify-between pt-1">
               <div>
-                <div className="text-[11px] text-slate-400">Fee Defaulters</div>
+                <div className="text-[11px] text-slate-400">{t.admin.feeDefaulters}</div>
                 <div className="text-xl font-extrabold text-rose-400">37</div>
               </div>
               <div className="p-2 rounded-xl bg-rose-950/40 border border-rose-800/40 text-rose-400">
@@ -253,7 +275,7 @@ export default function AdminDashboardPage() {
 
             <div>
               <div className="flex items-center justify-between text-[11px]">
-                <span className="text-slate-400">Online Challans Paid</span>
+                <span className="text-slate-400">{t.admin.onlineChallans}</span>
                 <span className="text-cyan-400 font-bold">33.0%</span>
               </div>
               {renderSparkline()}
@@ -263,14 +285,16 @@ export default function AdminDashboardPage() {
           {/* Card 3: HR & Operations */}
           <div className="p-5 rounded-2xl bg-[#161e31] border border-slate-800/90 shadow-sm space-y-4">
             <div className="flex items-center justify-between">
-              <span className="font-bold text-xs text-white">HR & Operations</span>
+              <span className="font-bold text-xs text-white">{t.admin.hrTitle}</span>
               <Users className="w-4 h-4 text-emerald-400" />
             </div>
 
             <div className="p-3 rounded-xl bg-[#111827] border border-slate-800 flex items-center justify-between">
               <div>
-                <div className="text-[10px] text-slate-400">Total Staff Leave Requests</div>
-                <div className="text-xs font-bold text-amber-400 mt-0.5">(8 Pending)</div>
+                <div className="text-[10px] text-slate-400">{t.admin.leaveRequests}</div>
+                <div className="text-xs font-bold text-amber-400 mt-0.5">
+                  {lang === "ur" ? "(8 زیر التواء)" : lang === "ar" ? "(8 معلقة)" : "(8 Pending)"}
+                </div>
               </div>
               <span className="w-6 h-6 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-xs">
                 !
@@ -279,8 +303,10 @@ export default function AdminDashboardPage() {
 
             <div className="p-3 rounded-xl bg-[#111827] border border-slate-800 flex items-center justify-between">
               <div>
-                <div className="text-[10px] text-slate-400">Biometric Logs</div>
-                <div className="text-xs font-bold text-emerald-400 mt-0.5">Check-in state</div>
+                <div className="text-[10px] text-slate-400">{t.admin.biometricLogs}</div>
+                <div className="text-xs font-bold text-emerald-400 mt-0.5">
+                  {lang === "ur" ? "حاضری فعال" : lang === "ar" ? "حالة الدخول" : "Check-in state"}
+                </div>
               </div>
               <CheckCircle2 className="w-5 h-5 text-emerald-400" />
             </div>
@@ -289,45 +315,45 @@ export default function AdminDashboardPage() {
           {/* Card 4: Multi-Tenant & Campus Network */}
           <div className="p-5 rounded-2xl bg-[#161e31] border border-slate-800/90 shadow-sm space-y-3">
             <div className="flex items-center justify-between">
-              <span className="font-bold text-xs text-white">Multi-Tenant & Campus Network</span>
+              <span className="font-bold text-xs text-white">{t.admin.campusNetwork}</span>
               <Building className="w-4 h-4 text-indigo-400" />
             </div>
 
             <div className="relative h-14 rounded-xl bg-[#111827] border border-slate-800 flex items-center justify-around overflow-hidden px-2">
               <div className="text-center">
                 <MapPin className="w-4 h-4 text-purple-400 mx-auto" />
-                <span className="text-[9px] text-slate-400">Karachi</span>
+                <span className="text-[9px] text-slate-400">{lang === "ur" ? "کراچی" : lang === "ar" ? "كراتشي" : "Karachi"}</span>
               </div>
               <div className="text-center">
                 <MapPin className="w-4 h-4 text-indigo-400 mx-auto" />
-                <span className="text-[9px] text-slate-400">Lahore</span>
+                <span className="text-[9px] text-slate-400">{lang === "ur" ? "لاہور" : lang === "ar" ? "لاهور" : "Lahore"}</span>
               </div>
               <div className="text-center">
                 <MapPin className="w-4 h-4 text-cyan-400 mx-auto" />
-                <span className="text-[9px] text-slate-400">Islamabad</span>
+                <span className="text-[9px] text-slate-400">{lang === "ur" ? "اسلام آباد" : lang === "ar" ? "إسلام آباد" : "Islamabad"}</span>
               </div>
             </div>
 
             <div className="space-y-2 text-[11px]">
               <div className="flex items-center justify-between">
-                <span className="text-slate-300">Karachi</span>
+                <span className="text-slate-300">{lang === "ur" ? "کراچی" : lang === "ar" ? "كراتشي" : "Karachi"}</span>
                 <span className="text-emerald-400 font-semibold flex items-center gap-1.5">
                   <span className="w-12 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
-                  Active
+                  {lang === "ur" ? "فعال" : lang === "ar" ? "نشط" : "Active"}
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-slate-300">Lahore</span>
+                <span className="text-slate-300">{lang === "ur" ? "لاہور" : lang === "ar" ? "لاهور" : "Lahore"}</span>
                 <span className="text-emerald-400 font-semibold flex items-center gap-1.5">
                   <span className="w-12 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
-                  Active
+                  {lang === "ur" ? "فعال" : lang === "ar" ? "نشط" : "Active"}
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-slate-300">Islamabad</span>
+                <span className="text-slate-300">{lang === "ur" ? "اسلام آباد" : lang === "ar" ? "إسلام آباد" : "Islamabad"}</span>
                 <span className="text-emerald-400 font-semibold flex items-center gap-1.5">
                   <span className="w-12 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
-                  Health
+                  {lang === "ur" ? "بہترین" : lang === "ar" ? "سليم" : "Health"}
                 </span>
               </div>
             </div>
@@ -340,23 +366,23 @@ export default function AdminDashboardPage() {
           <div className="lg:col-span-8 p-5 rounded-2xl bg-[#161e31] border border-slate-800/90 shadow-sm space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
-                <h3 className="font-bold text-sm text-white">Monthly Registration & Fee Trends</h3>
-                <p className="text-[11px] text-slate-400">Real-time collections vs new admissions across sessions</p>
+                <h3 className="font-bold text-sm text-white">{t.admin.chartTitle}</h3>
+                <p className="text-[11px] text-slate-400">{t.admin.chartSubtitle}</p>
               </div>
 
               {/* Chart Legend */}
               <div className="flex items-center gap-3 text-xs">
                 <span className="flex items-center gap-1.5 text-slate-300">
                   <span className="w-2.5 h-2.5 rounded-sm bg-indigo-500 inline-block" />
-                  PKR
+                  {lang === "ur" ? "روپے (PKR)" : lang === "ar" ? "الرسوم" : "PKR"}
                 </span>
                 <span className="flex items-center gap-1.5 text-slate-300">
                   <span className="w-2.5 h-2.5 rounded-sm bg-emerald-400 inline-block" />
-                  Student
+                  {lang === "ur" ? "طلباء" : lang === "ar" ? "الطلاب" : "Student"}
                 </span>
                 <span className="flex items-center gap-1.5 text-slate-300">
                   <span className="w-2.5 h-2.5 rounded-sm bg-rose-400 inline-block" />
-                  Expenses
+                  {lang === "ur" ? "اخراجات" : lang === "ar" ? "المصروفات" : "Expenses"}
                 </span>
               </div>
             </div>
@@ -396,7 +422,7 @@ export default function AdminDashboardPage() {
           {/* Notifications & Recent Logs (spans 4 cols) */}
           <div className="lg:col-span-4 p-5 rounded-2xl bg-[#161e31] border border-slate-800/90 shadow-sm space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="font-bold text-sm text-white">Notifications & Recent Logs</h3>
+              <h3 className="font-bold text-sm text-white">{t.admin.notificationsTitle}</h3>
               <Bell className="w-4 h-4 text-slate-400" />
             </div>
 
@@ -407,9 +433,11 @@ export default function AdminDashboardPage() {
                 </div>
                 <div>
                   <div className="text-xs font-bold text-white leading-snug">
-                    Admin updated Fee structure
+                    {lang === "ur" ? "ایڈمن نے فیس کا ڈھانچہ اپ ڈیٹ کر دیا" : lang === "ar" ? "قام المشرف بتحديث هيكل الرسوم" : "Admin updated Fee structure"}
                   </div>
-                  <div className="text-[10px] text-slate-400 mt-1">Real-time updates ago</div>
+                  <div className="text-[10px] text-slate-400 mt-1">
+                    {lang === "ur" ? "ابھی ابھی" : lang === "ar" ? "تحديث مباشر" : "Real-time updates ago"}
+                  </div>
                 </div>
               </div>
 
@@ -419,9 +447,11 @@ export default function AdminDashboardPage() {
                 </div>
                 <div>
                   <div className="text-xs font-bold text-white leading-snug">
-                    Subdomain "lhe.schoolsaas.cloud" active
+                    {lang === "ur" ? "سب ڈومین 'lhe.schoolsaas.cloud' فعال ہو گئی" : lang === "ar" ? "النطاق الفرعي 'lhe.schoolsaas.cloud' نشط" : "Subdomain \"lhe.schoolsaas.cloud\" active"}
                   </div>
-                  <div className="text-[10px] text-slate-400 mt-1">Real-time updates ago</div>
+                  <div className="text-[10px] text-slate-400 mt-1">
+                    {lang === "ur" ? "ابھی ابھی" : lang === "ar" ? "تحديث مباشر" : "Real-time updates ago"}
+                  </div>
                 </div>
               </div>
 
@@ -431,9 +461,11 @@ export default function AdminDashboardPage() {
                 </div>
                 <div>
                   <div className="text-xs font-bold text-white leading-snug">
-                    Class 10-A Attendance Synchronized
+                    {lang === "ur" ? "کلاس 10-A کی حاضری ہم آہنگ ہو گئی" : lang === "ar" ? "تمت مزامنة حضور الفصل 10-A" : "Class 10-A Attendance Synchronized"}
                   </div>
-                  <div className="text-[10px] text-slate-400 mt-1">5 minutes ago</div>
+                  <div className="text-[10px] text-slate-400 mt-1">
+                    {lang === "ur" ? "5 منٹ پہلے" : lang === "ar" ? "منذ 5 دقائق" : "5 minutes ago"}
+                  </div>
                 </div>
               </div>
             </div>
