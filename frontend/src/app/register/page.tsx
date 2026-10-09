@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { apiRequest, setSchoolSlug, setAccessToken, clearAllSessionData } from "@/lib/api";
@@ -19,6 +19,8 @@ import {
   Mail,
   AlertTriangle,
   RotateCw,
+  ArrowLeft,
+  XCircle,
 } from "lucide-react";
 
 const pageTranslations = {
@@ -35,6 +37,9 @@ const pageTranslations = {
     slugLabel: "Subdomain Slug (Unique Identifier)",
     slugPlaceholder: "lga-campus",
     slugSuffix: ".schoolsaas.cloud",
+    slugChecking: "Checking subdomain availability...",
+    slugAvailable: "Subdomain is available",
+    slugTaken: "Subdomain is already taken or reserved",
     continueAdmin: "Continue to Admin Setup",
     adminTitle: "Super-Administrator Account",
     adminSubtitle: "This master account controls all staff permissions, billing challans, and academic terms.",
@@ -70,6 +75,8 @@ const pageTranslations = {
     resendButton: "Resend Code",
     resendCooldown: "Resend code in {n}s",
     backToReview: "Back to Review",
+    jumpToFix1: "← Go to Step 1 (School Identity) to fix",
+    jumpToFix2: "← Go to Step 2 (Administrator Profile) to fix",
     errors: {
       step1: "Please provide both School Name and Subdomain Slug.",
       step2: "Please complete all administrator credentials.",
@@ -92,6 +99,9 @@ const pageTranslations = {
     slugLabel: "سب ڈومین سلگ (مخصوص شناخت کنندہ)",
     slugPlaceholder: "lga-campus",
     slugSuffix: ".schoolsaas.cloud",
+    slugChecking: "سب ڈومین کی دستیابی چیک کی جا رہی ہے...",
+    slugAvailable: "سب ڈومین دستیاب ہے",
+    slugTaken: "یہ سب ڈومین پہلے سے کسی اور کے استعمال میں ہے",
     continueAdmin: "ایڈمنسٹریٹر سیٹ اپ پر جائیں",
     adminTitle: "سپر ایڈمنسٹریٹر اکاؤنٹ",
     adminSubtitle: "یہ مرکزی اکاؤنٹ تمام اساتذہ، عملہ، فیس چالان اور امتحانی نتائج کا انتظام سنبھالے گا۔",
@@ -127,6 +137,8 @@ const pageTranslations = {
     resendButton: "دوبارہ کوڈ بھیجیں",
     resendCooldown: "{n} سیکنڈ بعد دوبارہ بھیجیں",
     backToReview: "واپس جائزے پر جائیں",
+    jumpToFix1: "← مرحلہ 1 (اسکول کی شناخت) پر جائیں اور درست کریں",
+    jumpToFix2: "← مرحلہ 2 (ایڈمنسٹریٹر) پر جائیں اور درست کریں",
     errors: {
       step1: "براہ کرم اسکول کا نام اور سب ڈومین سلگ دونوں فراہم کریں۔",
       step2: "براہ کرم ایڈمنسٹریٹر کی تمام معلومات مکمل کریں۔",
@@ -149,6 +161,9 @@ const pageTranslations = {
     slugLabel: "المعرف الفرعي (النطاق الخاص)",
     slugPlaceholder: "alnoor-academy",
     slugSuffix: ".schoolsaas.cloud",
+    slugChecking: "جاري التحقق من توفر النطاق الفرعي...",
+    slugAvailable: "النطاق الفرعي متاح للاستخدام",
+    slugTaken: "هذا النطاق الفرعي محجوز أو مستخدم مسبقاً",
     continueAdmin: "المتابعة لإعداد المشرف",
     adminTitle: "حساب المشرف العام (Super-Admin)",
     adminSubtitle: "يتمتع هذا الحساب بالصلاحيات الكاملة لإدارة الكادر، الفواتير، والسنوات الدراسية.",
@@ -184,6 +199,8 @@ const pageTranslations = {
     resendButton: "إعادة إرسال الرمز",
     resendCooldown: "إعادة الإرسال بعد {n} ثانية",
     backToReview: "العودة للمراجعة",
+    jumpToFix1: "← الانتقال للخطوة 1 (بيانات المدرسة) للتعديل",
+    jumpToFix2: "← الانتقال للخطوة 2 (حساب المشرف) للتعديل",
     errors: {
       step1: "يرجى إدخال اسم المدرسة والمعرف الفرعي.",
       step2: "يرجى إكمال جميع بيانات المشرف.",
@@ -201,6 +218,8 @@ export default function RegisterWizardPage() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [errorStep, setErrorStep] = useState<number | null>(null);
 
   const t = pageTranslations[lang] || pageTranslations.en;
   const isRTL = lang === "ur" || lang === "ar";
@@ -214,6 +233,10 @@ export default function RegisterWizardPage() {
     admin_password: "",
     confirm_password: "",
   });
+
+  // Slug live check state
+  const [slugStatus, setSlugStatus] = useState<"idle" | "checking" | "available" | "taken">("idle");
+  const slugDebounceRef = useRef<any>(null);
 
   // Step 4 Confirmation Code states
   const [draftId, setDraftId] = useState("");
@@ -277,28 +300,83 @@ export default function RegisterWizardPage() {
     return `${name[0]}***${name[name.length - 1]}@${domain}`;
   };
 
+  const checkSlugAvailability = async (slugToCheck: string) => {
+    if (!slugToCheck || slugToCheck.length < 3) {
+      setSlugStatus("idle");
+      return;
+    }
+    setSlugStatus("checking");
+    try {
+      const res: any = await apiRequest(`/api/v1/core/check-slug/?slug=${encodeURIComponent(slugToCheck)}`);
+      if (res && res.available) {
+        setSlugStatus("available");
+        setFieldErrors((prev) => {
+          const next = { ...prev };
+          delete next.slug;
+          return next;
+        });
+      } else {
+        setSlugStatus("taken");
+        setFieldErrors((prev) => ({
+          ...prev,
+          slug: res?.message || t.slugTaken,
+        }));
+      }
+    } catch {
+      setSlugStatus("idle");
+    }
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
+    
+    // Clear field-level error on edit
+    setFieldErrors((prev) => {
+      const next = { ...prev };
+      delete next[name];
+      return next;
+    });
+
     setFormData((prev) => {
       const next = { ...prev, [name]: value };
       if (name === "school_name" && !prev.slug) {
-        next.slug = value
+        const autoSlug = value
           .toLowerCase()
           .replace(/[^a-z0-9]/g, "-")
           .replace(/-+/g, "-")
           .replace(/^-|-$/g, "");
+        next.slug = autoSlug;
+        if (autoSlug.length >= 3) {
+          clearTimeout(slugDebounceRef.current);
+          slugDebounceRef.current = setTimeout(() => checkSlugAvailability(autoSlug), 400);
+        }
       }
       return next;
     });
+
+    if (name === "slug") {
+      clearTimeout(slugDebounceRef.current);
+      if (value.trim().length >= 3) {
+        slugDebounceRef.current = setTimeout(() => checkSlugAvailability(value.trim().toLowerCase()), 400);
+      } else {
+        setSlugStatus("idle");
+      }
+    }
   };
 
   const handleNext = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg("");
+    setErrorStep(null);
 
     if (step === 1) {
       if (!formData.school_name || !formData.slug) {
         setErrorMsg(t.errors.step1);
+        return;
+      }
+      if (slugStatus === "taken") {
+        setErrorMsg(t.slugTaken);
+        setFieldErrors((prev) => ({ ...prev, slug: t.slugTaken }));
         return;
       }
       setStep(2);
@@ -309,10 +387,12 @@ export default function RegisterWizardPage() {
       }
       if (!isRecognizedEmail(formData.admin_email)) {
         setErrorMsg(t.errors.emailRejected);
+        setFieldErrors((prev) => ({ ...prev, admin_email: t.errors.emailRejected }));
         return;
       }
       if (formData.admin_password !== formData.confirm_password) {
         setErrorMsg(t.errors.passwordsMismatch);
+        setFieldErrors((prev) => ({ ...prev, confirm_password: t.errors.passwordsMismatch }));
         return;
       }
       setStep(3);
@@ -322,6 +402,9 @@ export default function RegisterWizardPage() {
   const handleSubmit = async () => {
     setLoading(true);
     setErrorMsg("");
+    setFieldErrors({});
+    setErrorStep(null);
+
     try {
       setSchoolSlug(formData.slug);
 
@@ -357,15 +440,58 @@ export default function RegisterWizardPage() {
         return;
       }
 
-      // If backend returns an explicit error or fails to supply draft_id
+      // If auto-verified in special headless mode
+      if (res?.auto_verified && res?.tokens?.access) {
+        setAccessToken(res.tokens.access);
+        setSchoolSlug(formData.slug);
+        if (typeof window !== "undefined") {
+          sessionStorage.setItem(
+            "just_registered_school",
+            JSON.stringify({
+              schoolName: formData.school_name,
+              slug: formData.slug,
+              username: formData.admin_username,
+              schoolCode: formData.slug,
+            })
+          );
+        }
+        router.push("/register/success");
+        return;
+      }
+
+      // Fallback if backend returned errors dictionary
       if (res?.errors) {
-        const firstErr = Object.values(res.errors)[0];
-        throw new Error(Array.isArray(firstErr) ? firstErr[0] : String(firstErr));
+        const errorEntries = Object.entries(res.errors);
+        if (errorEntries.length > 0) {
+          const [firstField, firstVal] = errorEntries[0];
+          const msg = Array.isArray(firstVal) ? firstVal[0] : String(firstVal);
+          throw new Error(`${firstField}: ${msg}`);
+        }
       }
 
       throw new Error(res?.message || "Failed to initiate verification session.");
     } catch (err: any) {
-      setErrorMsg(err.message || "Failed to submit registration. Please verify subdomain and email.");
+      const backendErrors = err.data?.errors || err.data || {};
+      const newFieldErrors: Record<string, string> = {};
+      let determinedStep: number | null = null;
+
+      if (typeof backendErrors === "object" && backendErrors !== null) {
+        for (const [key, val] of Object.entries(backendErrors)) {
+          if (["success", "detail", "message", "status"].includes(key)) continue;
+          const text = Array.isArray(val) ? val[0] : (typeof val === "object" ? JSON.stringify(val) : String(val));
+          newFieldErrors[key] = text;
+
+          if (key === "slug" || key === "school_name") {
+            determinedStep = 1;
+          } else if (!determinedStep && (key.startsWith("admin_") || key === "contact_phone" || key === "contact_email")) {
+            determinedStep = 2;
+          }
+        }
+      }
+
+      setFieldErrors(newFieldErrors);
+      setErrorStep(determinedStep);
+      setErrorMsg(err.message || "Failed to submit registration. Please verify subdomain and administrator details.");
     } finally {
       setLoading(false);
     }
@@ -463,9 +589,27 @@ export default function RegisterWizardPage() {
         {/* Step Indicator */}
         <div className="mb-6">
           <div className="flex items-center justify-between text-xs font-bold text-slate-500 mb-2">
-            <span className={step >= 1 ? "text-indigo-600 dark:text-indigo-400" : ""}>{t.step1}</span>
-            <span className={step >= 2 ? "text-indigo-600 dark:text-indigo-400" : ""}>{t.step2}</span>
-            <span className={step >= 3 ? "text-indigo-600 dark:text-indigo-400" : ""}>{t.step3}</span>
+            <button
+              type="button"
+              onClick={() => step > 1 && setStep(1)}
+              className={`hover:underline ${step >= 1 ? "text-indigo-600 dark:text-indigo-400" : ""}`}
+            >
+              {t.step1}
+            </button>
+            <button
+              type="button"
+              onClick={() => step > 2 && setStep(2)}
+              className={`hover:underline ${step >= 2 ? "text-indigo-600 dark:text-indigo-400" : ""}`}
+            >
+              {t.step2}
+            </button>
+            <button
+              type="button"
+              onClick={() => step > 3 && setStep(3)}
+              className={`hover:underline ${step >= 3 ? "text-indigo-600 dark:text-indigo-400" : ""}`}
+            >
+              {t.step3}
+            </button>
             <span className={step >= 4 ? "text-indigo-600 dark:text-indigo-400" : ""}>{t.step4}</span>
           </div>
           <div className="w-full h-2 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
@@ -477,10 +621,24 @@ export default function RegisterWizardPage() {
         </div>
 
         <div className="p-6 sm:p-8 rounded-3xl bg-white dark:bg-[#161e31] border border-slate-200 dark:border-slate-800 shadow-xl space-y-6">
+          {/* Global Error Banner */}
           {errorMsg && (
-            <div className="p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-400 text-xs flex items-start gap-2">
-              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-              <span>{errorMsg}</span>
+            <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-xs space-y-2">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600 dark:text-rose-400" />
+                <span className="font-semibold leading-relaxed">{errorMsg}</span>
+              </div>
+              {errorStep && errorStep !== step && (
+                <div className="pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setStep(errorStep)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-sm transition"
+                  >
+                    <span>{errorStep === 1 ? t.jumpToFix1 : t.jumpToFix2}</span>
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
@@ -508,14 +666,44 @@ export default function RegisterWizardPage() {
                   onChange={handleChange}
                   placeholder={t.schoolNamePlaceholder}
                   required
-                  className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-[#111827] border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:border-indigo-600"
+                  className={`w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-[#111827] border text-sm focus:outline-none transition ${
+                    fieldErrors.school_name
+                      ? "border-rose-500 ring-2 ring-rose-500/20"
+                      : "border-slate-200 dark:border-slate-700 focus:border-indigo-600"
+                  }`}
                 />
+                {fieldErrors.school_name && (
+                  <p className="text-xs text-rose-600 dark:text-rose-400 font-semibold mt-1">
+                    ⚠️ {fieldErrors.school_name}
+                  </p>
+                )}
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  {t.slugLabel}
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                    {t.slugLabel}
+                  </label>
+                  {slugStatus === "checking" && (
+                    <span className="text-[11px] text-slate-400 flex items-center gap-1 font-mono">
+                      <RotateCw className="w-3 h-3 animate-spin" />
+                      <span>{t.slugChecking}</span>
+                    </span>
+                  )}
+                  {slugStatus === "available" && (
+                    <span className="text-[11px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1 font-semibold">
+                      <CheckCircle2 className="w-3 h-3" />
+                      <span>{t.slugAvailable}</span>
+                    </span>
+                  )}
+                  {slugStatus === "taken" && (
+                    <span className="text-[11px] text-rose-600 dark:text-rose-400 flex items-center gap-1 font-semibold">
+                      <XCircle className="w-3 h-3" />
+                      <span>{t.slugTaken}</span>
+                    </span>
+                  )}
+                </div>
+
                 <div className="flex items-center">
                   <input
                     type="text"
@@ -524,18 +712,30 @@ export default function RegisterWizardPage() {
                     onChange={handleChange}
                     placeholder={t.slugPlaceholder}
                     required
-                    className="w-full px-4 py-2.5 rounded-l-xl rtl:rounded-l-none rtl:rounded-r-xl bg-slate-50 dark:bg-[#111827] border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:border-indigo-600 font-mono"
+                    className={`w-full px-4 py-2.5 rounded-l-xl rtl:rounded-l-none rtl:rounded-r-xl bg-slate-50 dark:bg-[#111827] border text-sm focus:outline-none font-mono transition ${
+                      fieldErrors.slug || slugStatus === "taken"
+                        ? "border-rose-500 ring-2 ring-rose-500/20"
+                        : slugStatus === "available"
+                        ? "border-emerald-500"
+                        : "border-slate-200 dark:border-slate-700 focus:border-indigo-600"
+                    }`}
                   />
                   <span className="px-3 py-2.5 rounded-r-xl rtl:rounded-r-none rtl:rounded-l-xl bg-slate-100 dark:bg-slate-800 border border-l-0 rtl:border-l rtl:border-r-0 border-slate-200 dark:border-slate-700 text-xs text-slate-500 font-mono">
                     {t.slugSuffix}
                   </span>
                 </div>
+                {fieldErrors.slug && (
+                  <p className="text-xs text-rose-600 dark:text-rose-400 font-semibold mt-1">
+                    ⚠️ {fieldErrors.slug}
+                  </p>
+                )}
               </div>
 
               <div className="pt-2">
                 <button
                   type="submit"
-                  className="w-full py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 transition flex items-center justify-center gap-1.5"
+                  disabled={slugStatus === "taken"}
+                  className="w-full py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 transition flex items-center justify-center gap-1.5 disabled:opacity-50"
                 >
                   <span>{t.continueAdmin}</span>
                   <ArrowRight className="w-4 h-4 rtl:rotate-180" />
@@ -567,8 +767,17 @@ export default function RegisterWizardPage() {
                   value={formData.admin_name}
                   onChange={handleChange}
                   placeholder={t.adminNamePlaceholder}
-                  className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-[#111827] border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:border-indigo-600"
+                  className={`w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-[#111827] border text-sm focus:outline-none transition ${
+                    fieldErrors.admin_name
+                      ? "border-rose-500 ring-2 ring-rose-500/20"
+                      : "border-slate-200 dark:border-slate-700 focus:border-indigo-600"
+                  }`}
                 />
+                {fieldErrors.admin_name && (
+                  <p className="text-xs text-rose-600 dark:text-rose-400 font-semibold mt-1">
+                    ⚠️ {fieldErrors.admin_name}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -582,8 +791,17 @@ export default function RegisterWizardPage() {
                   onChange={handleChange}
                   placeholder={t.adminUsernamePlaceholder}
                   required
-                  className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-[#111827] border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:border-indigo-600 font-mono"
+                  className={`w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-[#111827] border text-sm focus:outline-none font-mono transition ${
+                    fieldErrors.admin_username
+                      ? "border-rose-500 ring-2 ring-rose-500/20"
+                      : "border-slate-200 dark:border-slate-700 focus:border-indigo-600"
+                  }`}
                 />
+                {fieldErrors.admin_username && (
+                  <p className="text-xs text-rose-600 dark:text-rose-400 font-semibold mt-1">
+                    ⚠️ {fieldErrors.admin_username}
+                  </p>
+                )}
               </div>
 
               {/* Administrator Email with Live Provider Badges */}
@@ -609,8 +827,8 @@ export default function RegisterWizardPage() {
                     placeholder={t.adminEmailPlaceholder}
                     required
                     className={`w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-[#111827] border text-sm focus:outline-none transition ${
-                      formData.admin_email && !emailStatus.isValid
-                        ? "border-rose-400 dark:border-rose-600 focus:border-rose-600"
+                      fieldErrors.admin_email || (formData.admin_email && !emailStatus.isValid)
+                        ? "border-rose-500 ring-2 ring-rose-500/20"
                         : emailStatus.isValid
                         ? "border-emerald-500 dark:border-emerald-500 focus:border-emerald-600"
                         : "border-slate-200 dark:border-slate-700 focus:border-indigo-600"
@@ -618,6 +836,12 @@ export default function RegisterWizardPage() {
                   />
                   <Mail className="w-4 h-4 text-slate-400 absolute right-3 rtl:right-auto rtl:left-3 top-3 pointer-events-none" />
                 </div>
+
+                {fieldErrors.admin_email && (
+                  <p className="text-xs text-rose-600 dark:text-rose-400 font-semibold mt-1">
+                    ⚠️ {fieldErrors.admin_email}
+                  </p>
+                )}
 
                 {/* Provider Badges Strip */}
                 <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
@@ -663,7 +887,7 @@ export default function RegisterWizardPage() {
                     </span>
                   </div>
 
-                  {formData.admin_email && !emailStatus.isValid && (
+                  {formData.admin_email && !emailStatus.isValid && !fieldErrors.admin_email && (
                     <p className="text-[11px] text-rose-500 mt-1.5 font-medium">
                       ⚠️ {t.emailInvalidDomain}
                     </p>
@@ -683,8 +907,17 @@ export default function RegisterWizardPage() {
                     onChange={handleChange}
                     placeholder="••••••••"
                     required
-                    className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-[#111827] border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:border-indigo-600"
+                    className={`w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-[#111827] border text-sm focus:outline-none transition ${
+                      fieldErrors.admin_password
+                        ? "border-rose-500 ring-2 ring-rose-500/20"
+                        : "border-slate-200 dark:border-slate-700 focus:border-indigo-600"
+                    }`}
                   />
+                  {fieldErrors.admin_password && (
+                    <p className="text-xs text-rose-600 dark:text-rose-400 font-semibold mt-1">
+                      ⚠️ {fieldErrors.admin_password}
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -698,8 +931,17 @@ export default function RegisterWizardPage() {
                     onChange={handleChange}
                     placeholder="••••••••"
                     required
-                    className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-[#111827] border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:border-indigo-600"
+                    className={`w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-[#111827] border text-sm focus:outline-none transition ${
+                      fieldErrors.confirm_password
+                        ? "border-rose-500 ring-2 ring-rose-500/20"
+                        : "border-slate-200 dark:border-slate-700 focus:border-indigo-600"
+                    }`}
                   />
+                  {fieldErrors.confirm_password && (
+                    <p className="text-xs text-rose-600 dark:text-rose-400 font-semibold mt-1">
+                      ⚠️ {fieldErrors.confirm_password}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -743,13 +985,31 @@ export default function RegisterWizardPage() {
                 </div>
                 <div className="flex justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
                   <span className="text-slate-500">{t.slugLabel}:</span>
-                  <code className="text-indigo-600 dark:text-indigo-400 font-bold font-mono">
-                    {formData.slug}{t.slugSuffix}
-                  </code>
+                  <div className="flex items-center gap-2">
+                    <code className="text-indigo-600 dark:text-indigo-400 font-bold font-mono">
+                      {formData.slug}{t.slugSuffix}
+                    </code>
+                    <button
+                      type="button"
+                      onClick={() => setStep(1)}
+                      className="text-[10px] text-slate-400 hover:text-indigo-600 underline"
+                    >
+                      Edit
+                    </button>
+                  </div>
                 </div>
                 <div className="flex justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
                   <span className="text-slate-500">{t.adminUsernameLabel}:</span>
-                  <strong className="text-slate-900 dark:text-white font-mono">{formData.admin_username}</strong>
+                  <div className="flex items-center gap-2">
+                    <strong className="text-slate-900 dark:text-white font-mono">{formData.admin_username}</strong>
+                    <button
+                      type="button"
+                      onClick={() => setStep(2)}
+                      className="text-[10px] text-slate-400 hover:text-indigo-600 underline"
+                    >
+                      Edit
+                    </button>
+                  </div>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-slate-500">{t.adminEmailLabel}:</span>
@@ -758,6 +1018,13 @@ export default function RegisterWizardPage() {
                     <span className="text-[10px] bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 px-1.5 py-0.5 rounded font-semibold">
                       {emailStatus.provider}
                     </span>
+                    <button
+                      type="button"
+                      onClick={() => setStep(2)}
+                      className="text-[10px] text-slate-400 hover:text-indigo-600 underline ml-1"
+                    >
+                      Edit
+                    </button>
                   </div>
                 </div>
               </div>

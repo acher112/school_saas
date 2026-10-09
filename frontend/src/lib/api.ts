@@ -178,7 +178,26 @@ export async function apiRequest<T>(
   }
 
   if (!response.ok) {
-    const error: any = new Error(data.detail || data.message || `Request failed with status ${response.status}`);
+    let errMsg = data.detail || data.message;
+    if (!errMsg && data.errors && typeof data.errors === 'object') {
+      const fieldErrors = Object.entries(data.errors).map(([field, errs]) => {
+        const msg = Array.isArray(errs) ? errs.join(', ') : (typeof errs === 'object' ? JSON.stringify(errs) : String(errs));
+        const cleanField = field.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
+        return `${cleanField}: ${msg}`;
+      });
+      errMsg = fieldErrors.join(' | ');
+    } else if (!errMsg && typeof data === 'object' && data !== null) {
+      const entries = Object.entries(data).filter(([k]) => k !== 'success' && k !== 'error');
+      if (entries.length > 0) {
+        errMsg = entries.map(([field, errs]) => {
+          const msg = Array.isArray(errs) ? errs.join(', ') : (typeof errs === 'object' ? JSON.stringify(errs) : String(errs));
+          const cleanField = field.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
+          return `${cleanField}: ${msg}`;
+        }).join(' | ');
+      }
+    }
+
+    const error: any = new Error(errMsg || `Request failed with status ${response.status}`);
     error.status = response.status;
     error.data = data;
     throw error;

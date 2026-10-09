@@ -3,6 +3,7 @@ School Onboarding and Registration Wizard views.
 Handles draft submission, 6-digit email verification, resend cooldowns, and live slug availability checks.
 """
 import re
+import os
 import secrets
 import logging
 from datetime import timedelta
@@ -98,6 +99,7 @@ class SchoolSignupWizardView(APIView):
         contact_phone = (data.get('contact_phone') or '03001234567').strip()
         admin_email = (data.get('admin_email') or data.get('contact_email') or '').strip().lower()
         admin_name = (data.get('admin_name') or data.get('admin_first_name') or data.get('admin_username') or '').strip()
+        admin_username = (data.get('admin_username') or data.get('admin_email', '').split('@')[0]).strip()
         admin_password = data.get('admin_password', '')
         terms_accepted = data.get('terms_accepted', False)
 
@@ -106,13 +108,21 @@ class SchoolSignupWizardView(APIView):
         if not slug or not SLUG_REGEX.match(slug):
             errors['slug'] = ["Subdomain must be 3-50 alphanumeric characters and hyphens."]
         elif School.objects.filter(slug__iexact=slug).exists():
-            errors['slug'] = ["This subdomain is already registered."]
+            errors['slug'] = [f"Subdomain slug '{slug}' is already registered. Please choose a different subdomain slug in Step 1."]
 
         from apps.core.email_validator import is_recognized_email_provider
         if not admin_email or '@' not in admin_email:
             errors['admin_email'] = ["A valid administrator email address is required."]
         elif not is_recognized_email_provider(admin_email):
             errors['admin_email'] = ["Please provide a registered email from Google (Gmail), Microsoft (Outlook/Hotmail), Yahoo, or Apple (iCloud). Unrecognized email providers are not accepted."]
+        elif User.objects.filter(email__iexact=admin_email, role=UserRole.SCHOOL_ADMIN).exists():
+            errors['admin_email'] = [f"Email '{admin_email}' is already registered as an administrator. Please sign in or use a different email in Step 2."]
+
+        if not admin_username:
+            errors['admin_username'] = ["Administrator username is required."]
+        elif User.objects.filter(username__iexact=admin_username).exists():
+            errors['admin_username'] = [f"Username '{admin_username}' is already taken. Please choose another username in Step 2."]
+
         if not contact_phone or not PK_PHONE_REGEX.match(contact_phone):
             errors['contact_phone'] = ["A valid Pakistani mobile phone number is required (e.g. 03001234567)."]
         if not admin_name:
@@ -123,7 +133,14 @@ class SchoolSignupWizardView(APIView):
             errors['terms_accepted'] = ["You must accept the Terms of Service and Privacy Policy."]
 
         if errors:
-            return Response({"success": False, "errors": errors}, status=status.HTTP_400_BAD_REQUEST)
+            first_field = next(iter(errors))
+            first_msg = errors[first_field][0]
+            clean_title = first_field.replace('_', ' ').capitalize()
+            return Response({
+                "success": False,
+                "message": f"{clean_title}: {first_msg}",
+                "errors": errors
+            }, status=status.HTTP_400_BAD_REQUEST)
 
         # Extract client IP
         client_ip = request.META.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip() or request.META.get('REMOTE_ADDR')
@@ -135,8 +152,9 @@ class SchoolSignupWizardView(APIView):
         cleaned_payload.pop('admin_password', None)
 
         require_verification = getattr(settings, 'REQUIRE_EMAIL_VERIFICATION', True)
+        is_unit_testing = getattr(settings, 'TESTING', False) or os.getenv('TESTING', '').lower() in ('true', '1', 'yes')
 
-        if not require_verification:
+        if not require_verification and is_unit_testing:
             # Auto-verify path (used when verification is disabled)
             school, admin_user = self._provision_school(cleaned_payload, client_ip)
             token = CustomTokenObtainPairSerializer.get_token(admin_user)
