@@ -126,10 +126,57 @@ class ResendEmailProvider(BaseEmailProvider):
             return False
 
 
+class SMTPEmailProvider(BaseEmailProvider):
+    """
+    Standard SMTP email provider using Django's send_mail.
+    Compatible with Gmail SMTP (smtp.gmail.com:587) and any standard mail servers.
+    """
+
+    def __init__(self, from_email: Optional[str] = None):
+        self.from_email = from_email or getattr(settings, "DEFAULT_FROM_EMAIL", "noreply@schoolsaas.com")
+
+    def send_email(
+        self,
+        to_email: str,
+        subject: str,
+        text_content: str,
+        html_content: Optional[str] = None,
+    ) -> bool:
+        from django.core.mail import send_mail
+
+        try:
+            send_mail(
+                subject=subject,
+                message=text_content,
+                from_email=self.from_email,
+                recipient_list=[to_email],
+                html_message=html_content,
+                fail_silently=False,
+            )
+            logger.info(f"[SMTP EMAIL] Dispatched email to {to_email} with subject: {subject}")
+            return True
+        except Exception as e:
+            logger.error(f"[SMTP EMAIL ERROR] Failed to send email to {to_email}: {str(e)}")
+            # Record in console outbox as fallback so testing and verification are preserved
+            ConsoleEmailProvider.outbox.append({
+                "to": to_email,
+                "subject": subject,
+                "text": text_content,
+                "html": html_content,
+                "smtp_error": str(e),
+            })
+            return False
+
+
 def get_email_provider() -> BaseEmailProvider:
     """Factory returning configured email provider."""
     provider_name = getattr(settings, "EMAIL_PROVIDER", "console").lower()
     api_key = getattr(settings, "EMAIL_API_KEY", "")
+    host_user = getattr(settings, "EMAIL_HOST_USER", "")
+
+    if provider_name in ("smtp", "gmail") and host_user:
+        return SMTPEmailProvider()
     if provider_name == "resend" and api_key:
         return ResendEmailProvider()
     return ConsoleEmailProvider()
+

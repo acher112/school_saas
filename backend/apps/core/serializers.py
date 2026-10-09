@@ -127,6 +127,14 @@ class SchoolSignupSerializer(serializers.Serializer):
             raise serializers.ValidationError("This username is already taken.")
         return value
 
+    def validate_admin_email(self, value):
+        from apps.core.email_validator import validate_recognized_email
+        return validate_recognized_email(value)
+
+    def validate_contact_email(self, value):
+        from apps.core.email_validator import validate_recognized_email
+        return validate_recognized_email(value)
+
     def validate(self, attrs):
         # Enforce SIGNUP_INVITE_CODE if set in environment
         required_invite_code = os.getenv('SIGNUP_INVITE_CODE', '').strip()

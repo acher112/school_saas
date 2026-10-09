@@ -24,10 +24,47 @@ export default function RegisterWizardPage() {
     confirm_password: "",
   });
 
+  // Step 4 Confirmation Code states
+  const [draftId, setDraftId] = useState("");
+  const [confirmationCode, setConfirmationCode] = useState("");
+  const [devCode, setDevCode] = useState("");
+  const [resendCooldown, setResendCooldown] = useState(0);
+
   useEffect(() => {
     // Strictly clear all previous session and school data on mount
     clearAllSessionData();
   }, []);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setResendCooldown((prev) => (prev <= 1 ? 0 : prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
+
+  const isRecognizedEmail = (email: string) => {
+    const parts = email.toLowerCase().trim().split("@");
+    if (parts.length !== 2) return false;
+    const domain = parts[1];
+    const recognized = [
+      "gmail.com",
+      "googlemail.com",
+      "yahoo.com",
+      "ymail.com",
+      "rocketmail.com",
+      "hotmail.com",
+      "outlook.com",
+      "live.com",
+      "msn.com",
+      "icloud.com",
+      "me.com",
+      "proton.me",
+      "protonmail.com",
+    ];
+    if (recognized.includes(domain)) return true;
+    return /^(yahoo|hotmail|outlook|live)\.[a-z]{2,3}(\.[a-z]{2})?$/.test(domain);
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -59,6 +96,12 @@ export default function RegisterWizardPage() {
         setErrorMsg("Please complete all administrator credentials.");
         return;
       }
+      if (!isRecognizedEmail(formData.admin_email)) {
+        setErrorMsg(
+          "Only email accounts registered on recognized platforms (Google/Gmail, Yahoo, Hotmail/Outlook, iCloud) are accepted."
+        );
+        return;
+      }
       if (formData.admin_password !== formData.confirm_password) {
         setErrorMsg("Passwords do not match.");
         return;
@@ -88,6 +131,7 @@ export default function RegisterWizardPage() {
         admin_password: formData.admin_password,
         admin_first_name: formData.admin_name || formData.admin_username,
         admin_last_name: "Admin",
+        terms_accepted: true,
       };
 
       const res: any = await apiRequest("/api/v1/core/signup/", {
@@ -95,9 +139,19 @@ export default function RegisterWizardPage() {
         body: JSON.stringify(payload),
       });
 
-      // Save tokens and session
-      if (res?.data?.tokens?.access) {
-        setAccessToken(res.data.tokens.access);
+      // If email verification code required
+      if (res?.otp_required || res?.draft_id) {
+        setDraftId(res.draft_id);
+        if (res.dev_code) setDevCode(res.dev_code);
+        setStep(4);
+        setResendCooldown(60);
+        return;
+      }
+
+      // Fallback path if auto-verified without draft
+      if (res?.data?.tokens?.access || res?.tokens?.access) {
+        const token = res?.data?.tokens?.access || res?.tokens?.access;
+        setAccessToken(token);
         setSchoolSlug(formData.slug);
       }
 
@@ -114,9 +168,63 @@ export default function RegisterWizardPage() {
       router.push("/register/success");
     } catch (err: any) {
       setErrorMsg(err.message || "Failed to register school. Please check that the subdomain is unique.");
-      setStep(1);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleVerifyCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!confirmationCode.trim() || confirmationCode.length < 6) {
+      setErrorMsg("Please enter the complete 6-digit confirmation code.");
+      return;
+    }
+
+    setLoading(true);
+    setErrorMsg("");
+    try {
+      const res: any = await apiRequest("/api/v1/core/signup/verify/", {
+        method: "POST",
+        body: JSON.stringify({
+          draft_id: draftId,
+          code: confirmationCode.trim(),
+        }),
+      });
+
+      if (res?.tokens?.access) {
+        setAccessToken(res.tokens.access);
+        setSchoolSlug(formData.slug);
+      }
+
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem("just_registered_school", JSON.stringify({
+          schoolName: formData.school_name,
+          slug: formData.slug,
+          username: formData.admin_username,
+          schoolCode: formData.slug,
+        }));
+      }
+
+      router.push("/register/success");
+    } catch (err: any) {
+      setErrorMsg(err.message || "Invalid or expired confirmation code. Please check your email.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendRegistrationCode = async () => {
+    if (resendCooldown > 0 || !draftId) return;
+    setErrorMsg("");
+    try {
+      const res: any = await apiRequest("/api/v1/core/signup/resend-code/", {
+        method: "POST",
+        body: JSON.stringify({ draft_id: draftId }),
+      });
+      if (res?.dev_code) setDevCode(res.dev_code);
+      setResendCooldown(60);
+    } catch (err: any) {
+      setErrorMsg(err.message || "Failed to resend confirmation code.");
     }
   };
 
@@ -150,14 +258,15 @@ export default function RegisterWizardPage() {
         {/* Step Indicator */}
         <div className="mb-8">
           <div className="flex items-center justify-between text-xs font-bold text-slate-500 mb-2">
-            <span className={step >= 1 ? "text-indigo-600 dark:text-indigo-400" : ""}>1. School Identity</span>
-            <span className={step >= 2 ? "text-indigo-600 dark:text-indigo-400" : ""}>2. Administrator</span>
-            <span className={step >= 3 ? "text-indigo-600 dark:text-indigo-400" : ""}>3. Review & Launch</span>
+            <span className={step >= 1 ? "text-indigo-600 dark:text-indigo-400" : ""}>1. School</span>
+            <span className={step >= 2 ? "text-indigo-600 dark:text-indigo-400" : ""}>2. Admin</span>
+            <span className={step >= 3 ? "text-indigo-600 dark:text-indigo-400" : ""}>3. Review</span>
+            <span className={step >= 4 ? "text-indigo-600 dark:text-indigo-400" : ""}>4. Verify Email</span>
           </div>
           <div className="w-full h-2 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
             <div
               className="h-full bg-indigo-600 transition-all duration-300"
-              style={{ width: `${(step / 3) * 100}%` }}
+              style={{ width: `${(step / 4) * 100}%` }}
             />
           </div>
         </div>
@@ -375,7 +484,7 @@ export default function RegisterWizardPage() {
                   className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 transition flex items-center justify-center gap-1.5 disabled:opacity-50"
                 >
                   {loading ? (
-                    <span>Provisioning School Partition...</span>
+                    <span>Sending Confirmation Code...</span>
                   ) : (
                     <>
                       <span>🚀 Launch My School Portal</span>
@@ -385,6 +494,81 @@ export default function RegisterWizardPage() {
                 </button>
               </div>
             </div>
+          )}
+
+          {/* STEP 4: Email Confirmation Code */}
+          {step === 4 && (
+            <form onSubmit={handleVerifyCode} className="space-y-4">
+              <div>
+                <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mb-3">
+                  <ShieldCheck className="w-6 h-6" />
+                </div>
+                <h2 className="text-xl font-bold text-slate-900 dark:text-white">Verify Your Email Address</h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                  We have dispatched a 6-digit confirmation security code to your registered email:
+                  <br />
+                  <strong className="text-slate-900 dark:text-white font-mono text-sm">{formData.admin_email}</strong>
+                </p>
+              </div>
+
+              {devCode && (
+                <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 text-xs flex items-center justify-between">
+                  <span>Dev Helper Code:</span>
+                  <span className="font-mono font-black text-sm tracking-wider">{devCode}</span>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  6-Digit Confirmation Code
+                </label>
+                <input
+                  type="text"
+                  maxLength={6}
+                  value={confirmationCode}
+                  onChange={(e) => setConfirmationCode(e.target.value.replace(/\D/g, ""))}
+                  placeholder="123456"
+                  required
+                  autoFocus
+                  className="w-full text-center text-2xl tracking-[0.5em] font-mono py-3 rounded-xl bg-slate-50 dark:bg-[#111827] border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-600"
+                />
+              </div>
+
+              <div className="pt-2 space-y-3">
+                <button
+                  type="submit"
+                  disabled={loading || confirmationCode.length < 6}
+                  className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 transition flex items-center justify-center gap-1.5 disabled:opacity-50"
+                >
+                  {loading ? (
+                    <span>Verifying Code & Activating School...</span>
+                  ) : (
+                    <>
+                      <span>Confirm & Launch School</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </>
+                  )}
+                </button>
+
+                <div className="flex items-center justify-between text-xs pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setStep(3)}
+                    className="text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 font-semibold"
+                  >
+                    ← Back to Review
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleResendRegistrationCode}
+                    disabled={resendCooldown > 0}
+                    className="text-indigo-600 dark:text-indigo-400 hover:underline disabled:opacity-50 disabled:no-underline font-semibold"
+                  >
+                    {resendCooldown > 0 ? `Resend code in ${resendCooldown}s` : "Resend Code"}
+                  </button>
+                </div>
+              </div>
+            </form>
           )}
         </div>
       </main>

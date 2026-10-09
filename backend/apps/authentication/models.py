@@ -179,3 +179,45 @@ class UserLoginAttempt(models.Model):
             self.failed_attempts = 0
             self.locked_until = None
             self.save(update_fields=['failed_attempts', 'locked_until'])
+
+
+class LoginOTPChallenge(models.Model):
+    """
+    Two-Factor Authentication challenge generated on every user login.
+    Stores a hashed 6-digit confirmation code dispatched to the user's registered email.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="login_otp_challenges"
+    )
+    email = models.EmailField(help_text="Registered email address to which code was dispatched.")
+    session_id = models.UUIDField(default=uuid.uuid4, unique=True, db_index=True)
+    code_hash = models.CharField(max_length=255)
+    attempts = models.PositiveSmallIntegerField(default=0)
+    expires_at = models.DateTimeField()
+    is_verified = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_sent_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Login OTP Challenge'
+        verbose_name_plural = 'Login OTP Challenges'
+        indexes = [
+            models.Index(fields=['session_id'], name='auth_otp_session_idx'),
+            models.Index(fields=['user', 'is_verified'], name='auth_otp_user_ver_idx'),
+        ]
+
+    def set_code(self, raw_code: str):
+        from django.contrib.auth.hashers import make_password
+        self.code_hash = make_password(str(raw_code).strip())
+
+    def check_code(self, raw_code: str) -> bool:
+        from django.contrib.auth.hashers import check_password
+        return check_password(str(raw_code).strip(), self.code_hash)
+
+    def is_expired(self) -> bool:
+        return timezone.now() > self.expires_at
+

@@ -108,8 +108,11 @@ class SchoolSignupWizardView(APIView):
         elif School.objects.filter(slug__iexact=slug).exists():
             errors['slug'] = ["This subdomain is already registered."]
 
+        from apps.core.email_validator import is_recognized_email_provider
         if not admin_email or '@' not in admin_email:
             errors['admin_email'] = ["A valid administrator email address is required."]
+        elif not is_recognized_email_provider(admin_email):
+            errors['admin_email'] = ["Only email addresses registered on recognized platforms (Google/Gmail, Yahoo, Hotmail/Outlook, iCloud) are accepted."]
         if not contact_phone or not PK_PHONE_REGEX.match(contact_phone):
             errors['contact_phone'] = ["A valid Pakistani mobile phone number is required (e.g. 03001234567)."]
         if not admin_name:

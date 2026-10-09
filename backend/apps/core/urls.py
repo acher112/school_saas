@@ -27,6 +27,7 @@ urlpatterns = [
     path('signup/', SchoolSignupView.as_view(), name='core-school-signup'),
     path('signup/wizard/', SchoolSignupWizardView.as_view(), name='core-signup-wizard'),
     path('signup/verify-email/', VerifyEmailCodeView.as_view(), name='core-signup-verify-email'),
+    path('signup/verify/', VerifyEmailCodeView.as_view(), name='core-signup-verify'),
     path('signup/resend-code/', ResendVerificationCodeView.as_view(), name='core-signup-resend-code'),
     path('check-slug/', CheckSlugAvailabilityView.as_view(), name='core-check-slug'),
     path('schools/check-slug/', CheckSlugAvailabilityView.as_view(), name='core-schools-check-slug'),

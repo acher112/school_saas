@@ -7,6 +7,7 @@ from rest_framework import status, generics, viewsets
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from django.conf import settings
 from django.db import connection
 from django.utils import timezone
 from apps.core.models import (
@@ -54,12 +55,34 @@ class HealthCheckView(APIView):
 
 class SchoolSignupView(APIView):
     """
-    Public Endpoint: Onboards a new school, creates admin user, default campus,
-    initial academic session, default permissions, and issues JWT tokens.
+    Public Endpoint: Onboards a new school.
+    If email verification is enabled, validates credentials, creates a registration draft,
+    and dispatches a 6-digit confirmation code to the administrator's email.
+    Otherwise, provisions the school immediately.
     """
     permission_classes = [AllowAny]
 
     def post(self, request):
+        # If legacy direct signup format (with contact_email, admin_username), use SchoolSignupSerializer
+        if 'admin_username' in request.data and 'contact_email' in request.data:
+            serializer = SchoolSignupSerializer(data=request.data)
+            if serializer.is_valid():
+                result = serializer.save()
+                return Response({
+                    "success": True,
+                    "message": "School successfully registered and activated.",
+                    "data": result
+                }, status=status.HTTP_201_CREATED)
+            return Response({
+                "success": False,
+                "errors": serializer.errors
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        require_verification = getattr(settings, 'REQUIRE_EMAIL_VERIFICATION', True)
+        if require_verification:
+            from apps.core.views_signup import SchoolSignupWizardView
+            return SchoolSignupWizardView().post(request)
+
         serializer = SchoolSignupSerializer(data=request.data)
         if serializer.is_valid():
             result = serializer.save()

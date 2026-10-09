@@ -291,11 +291,21 @@ CSRF_TRUSTED_ORIGINS = [
 SILENCED_SYSTEM_CHECKS = ['auth.E003']
 
 # Email Provider Configuration
-EMAIL_PROVIDER = os.getenv('EMAIL_PROVIDER', 'console')  # 'console' or 'resend'
+EMAIL_PROVIDER = os.getenv('EMAIL_PROVIDER', 'smtp' if os.getenv('EMAIL_HOST_USER') else 'console')
 EMAIL_API_KEY = os.getenv('EMAIL_API_KEY', '')
-EMAIL_FROM = os.getenv('EMAIL_FROM', 'noreply@schoolsaas.com')
+EMAIL_FROM = os.getenv('EMAIL_FROM', os.getenv('EMAIL_HOST_USER', 'noreply@schoolsaas.com'))
 REQUIRE_EMAIL_VERIFICATION = os.getenv('REQUIRE_EMAIL_VERIFICATION', 'true').lower() in ('true', '1', 'yes')
+REQUIRE_LOGIN_2FA = os.getenv('REQUIRE_LOGIN_2FA', 'true').lower() in ('true', '1', 'yes')
 SCHOOL_APPROVAL_REQUIRED = os.getenv('SCHOOL_APPROVAL_REQUIRED', 'false').lower() in ('true', '1', 'yes')
+
+# Standard Django SMTP Settings (Gmail compatible: smtp.gmail.com:587)
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', 587))
+EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'true').lower() in ('true', '1', 'yes')
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', EMAIL_FROM)
 
 # Google OAuth Configuration
 GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID', '')

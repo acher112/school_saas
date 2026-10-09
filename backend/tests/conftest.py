@@ -21,6 +21,10 @@ local_env = Path(__file__).resolve().parent.parent / '.env.local-pg'
 if local_env.exists():
     load_dotenv(local_env)
 
+# Testing environment flags
+os.environ['TESTING'] = 'true'
+os.environ['REQUIRE_LOGIN_2FA'] = 'false'
+
 # Test cleanup hook: test database flush must execute using the table owner connection
 # (school_saas_app has no TRUNCATE privilege)
 _orig_execute_sql_flush = BaseDatabaseOperations.execute_sql_flush
@@ -50,6 +54,7 @@ django.test.TestCase.databases = '__all__'
 django.test.TransactionTestCase.databases = '__all__'
 
 from django.conf import settings
+settings.REQUIRE_LOGIN_2FA = False
 from django.core.management import call_command
 from django.test.utils import setup_databases, teardown_databases
 from django.db import connections

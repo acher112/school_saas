@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { LanguageToggle } from "@/components/LanguageToggle";
@@ -27,6 +27,24 @@ export default function LoginPage() {
 
   // Multi-school selection state
   const [multiSchools, setMultiSchools] = useState<SchoolOption[] | null>(null);
+
+  // 2FA Email Confirmation Code state
+  const [showOtpScreen, setShowOtpScreen] = useState(false);
+  const [otpSessionId, setOtpSessionId] = useState("");
+  const [maskedEmail, setMaskedEmail] = useState("");
+  const [otpCode, setOtpCode] = useState("");
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [otpError, setOtpError] = useState("");
+  const [otpDevCode, setOtpDevCode] = useState("");
+  const [otpResendCooldown, setOtpResendCooldown] = useState(0);
+
+  useEffect(() => {
+    if (otpResendCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setOtpResendCooldown((prev) => (prev <= 1 ? 0 : prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [otpResendCooldown]);
 
   // Forgot password modal state
   const [showForgotModal, setShowForgotModal] = useState(false);
@@ -70,6 +88,18 @@ export default function LoginPage() {
         body: JSON.stringify(payload),
       });
 
+      // Check if 2FA OTP confirmation code is required
+      if (res?.otp_required) {
+        setOtpSessionId(res.session_id);
+        setMaskedEmail(res.masked_email || "your registered email");
+        setOtpDevCode(res.dev_code || "");
+        setShowOtpScreen(true);
+        setOtpCode("");
+        setOtpError("");
+        setOtpResendCooldown(60);
+        return;
+      }
+
       if (res.access) {
         setAccessToken(res.access);
         const slug = res.user?.school?.slug || res.user?.school_slug;
@@ -94,6 +124,62 @@ export default function LoginPage() {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleVerifyLoginOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!otpCode.trim() || otpCode.length < 6) {
+      setOtpError("Please enter the complete 6-digit confirmation code.");
+      return;
+    }
+
+    setOtpLoading(true);
+    setOtpError("");
+
+    try {
+      const res: any = await apiRequest('/api/v1/auth/login/verify-otp/', {
+        method: 'POST',
+        body: JSON.stringify({
+          session_id: otpSessionId,
+          code: otpCode.trim(),
+        }),
+      });
+
+      if (res.access) {
+        setAccessToken(res.access);
+        const slug = res.user?.school?.slug || res.user?.school_slug;
+        if (slug) {
+          setSchoolSlug(slug);
+        }
+        setAuthSuccess(res);
+        if (!res.user?.must_change_password) {
+          const userRole = res.user?.role;
+          const isAdminRole = userRole === 'admin' || userRole === 'school_admin' || userRole === 'superadmin';
+          const dest = isAdminRole ? '/admin' : `/${userRole || 'dashboard'}`;
+          router.push(dest);
+        }
+      }
+    } catch (err: any) {
+      setOtpError(err.message || "Invalid or expired confirmation code. Please check your email.");
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const handleResendLoginOtp = async () => {
+    if (otpResendCooldown > 0 || !otpSessionId) return;
+    setOtpError("");
+
+    try {
+      const res: any = await apiRequest('/api/v1/auth/login/resend-otp/', {
+        method: 'POST',
+        body: JSON.stringify({ session_id: otpSessionId }),
+      });
+      if (res.dev_code) setOtpDevCode(res.dev_code);
+      setOtpResendCooldown(60);
+    } catch (err: any) {
+      setOtpError(err.message || "Failed to resend confirmation code.");
     }
   };
 
@@ -241,6 +327,87 @@ export default function LoginPage() {
               </Link>
             </div>
           </div>
+        ) : showOtpScreen ? (
+          <form onSubmit={handleVerifyLoginOtp} className="space-y-5 py-2">
+            <div className="text-center space-y-2">
+              <div className="w-14 h-14 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 text-2xl flex items-center justify-center mx-auto shadow-md">
+                🔐
+              </div>
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+                {lang === "ur" ? "سیکیورٹی تصدیق" : lang === "ar" ? "التحقق من الأمان" : "Security Verification"}
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                {lang === "ur"
+                  ? `آپ کے رجسٹرڈ ای میل پر 6 ہندسوں کا تصدیقی کوڈ بھیجا گیا ہے:`
+                  : lang === "ar"
+                  ? `تم إرسال رمز تأكيد مكون من 6 أرقام إلى بريدك الإلكتروني المسجل:`
+                  : `A 6-digit confirmation security code was dispatched to your registered email:`}
+                <br />
+                <strong className="text-slate-900 dark:text-white font-mono text-sm">{maskedEmail}</strong>
+              </p>
+            </div>
+
+            {otpDevCode && (
+              <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 text-xs flex items-center justify-between">
+                <span>Dev Preview Code:</span>
+                <span className="font-mono font-black text-sm tracking-wider">{otpDevCode}</span>
+              </div>
+            )}
+
+            {otpError && (
+              <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-400 text-xs text-center">
+                ⚠️ {otpError}
+              </div>
+            )}
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 text-center">
+                {lang === "ur" ? "6 ہندسوں کا تصدیقی کوڈ" : lang === "ar" ? "رمز التأكيد (6 أرقام)" : "6-Digit Confirmation Code"}
+              </label>
+              <input
+                type="text"
+                maxLength={6}
+                value={otpCode}
+                onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
+                placeholder="123456"
+                required
+                autoFocus
+                className="w-full text-center text-2xl tracking-[0.5em] font-mono py-3.5 rounded-xl bg-slate-50 dark:bg-[#111827] border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-600"
+              />
+            </div>
+
+            <div className="space-y-3 pt-2">
+              <button
+                type="submit"
+                disabled={otpLoading || otpCode.length < 6}
+                className="w-full py-3.5 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:from-indigo-700 hover:to-purple-700 text-white text-xs font-bold shadow-lg shadow-indigo-500/25 transition disabled:opacity-50"
+              >
+                {otpLoading
+                  ? (lang === "ur" ? "تصدیق کی جا رہی ہے..." : lang === "ar" ? "جارٍ التحقق..." : "Verifying Code...")
+                  : (lang === "ur" ? "تصدیق کریں اور داخل ہوں →" : lang === "ar" ? "تأكيد الدخول ←" : "Verify & Sign In →")}
+              </button>
+
+              <div className="flex items-center justify-between text-xs pt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowOtpScreen(false)}
+                  className="text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 font-semibold"
+                >
+                  {lang === "ur" ? "← واپس لاگ ان" : lang === "ar" ? "← العودة لتسجيل الدخول" : "← Back to Login"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleResendLoginOtp}
+                  disabled={otpResendCooldown > 0}
+                  className="text-indigo-600 dark:text-indigo-400 hover:underline disabled:opacity-50 disabled:no-underline font-semibold"
+                >
+                  {otpResendCooldown > 0
+                    ? `${lang === "ur" ? "دوبارہ کوڈ" : lang === "ar" ? "إعادة الإرسال بعد" : "Resend in"} ${otpResendCooldown}s`
+                    : (lang === "ur" ? "دوبارہ کوڈ بھیجیں" : lang === "ar" ? "إعادة إرسال الرمز" : "Resend Code")}
+                </button>
+              </div>
+            </div>
+          </form>
         ) : multiSchools ? (
           /* Multi-School Selection Modal/Card */
           <div className="space-y-4 py-2">

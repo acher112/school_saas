@@ -4,6 +4,8 @@ URL routing for authentication endpoints.
 from django.urls import path
 from apps.authentication.views import (
     LoginView,
+    VerifyLoginOTPView,
+    ResendLoginOTPView,
     GoogleLoginView,
     RefreshTokenView,
     LogoutView,
@@ -20,6 +22,8 @@ from apps.authentication.views import (
 
 urlpatterns = [
     path('login/', LoginView.as_view(), name='auth-login'),
+    path('login/verify-otp/', VerifyLoginOTPView.as_view(), name='auth-login-verify-otp'),
+    path('login/resend-otp/', ResendLoginOTPView.as_view(), name='auth-login-resend-otp'),
     path('google/', GoogleLoginView.as_view(), name='auth-google'),
     path('refresh/', RefreshTokenView.as_view(), name='auth-refresh'),
     path('logout/', LogoutView.as_view(), name='auth-logout'),

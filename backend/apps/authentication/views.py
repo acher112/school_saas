@@ -16,10 +16,11 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 
-from apps.authentication.models import User, UserRole, ParentStudentRelation
+from apps.authentication.models import User, UserRole, ParentStudentRelation, LoginOTPChallenge
 from apps.core.models import School, AuditLog, PasswordResetToken
 from apps.core.permissions import IsTenantMember, IsSchoolAdmin
 from apps.core.email import get_email_provider
+from apps.core.email_validator import mask_email
 from apps.authentication.google import verify_google_id_token
 from apps.authentication.serializers import (
     CustomTokenObtainPairSerializer,
@@ -89,12 +90,203 @@ class LoginView(APIView):
                 }, status=status.HTTP_400_BAD_REQUEST)
             raise
         response_data = serializer.validated_data
+        authenticated_user = serializer.user
+
+        # 2FA Email Confirmation Code flow on every login
+        require_login_2fa = getattr(settings, 'REQUIRE_LOGIN_2FA', True)
+        if require_login_2fa and authenticated_user and authenticated_user.email:
+            code = f"{secrets.randbelow(900000) + 100000:06d}"
+            # Invalidate any prior unverified challenges
+            LoginOTPChallenge.objects.filter(user=authenticated_user, is_verified=False).delete()
+            challenge = LoginOTPChallenge(
+                user=authenticated_user,
+                email=authenticated_user.email,
+                expires_at=timezone.now() + timedelta(minutes=10),
+            )
+            challenge.set_code(code)
+            challenge.save()
+
+            email_provider = get_email_provider()
+            subject = f"Your School SaaS Login Confirmation Code: {code}"
+            text_body = (
+                f"Hello {authenticated_user.first_name or authenticated_user.username},\n\n"
+                f"You are signing in to School SaaS.\n\n"
+                f"Your 6-digit confirmation code is:\n\n"
+                f"    {code}\n\n"
+                f"This security code expires in 10 minutes.\n"
+                f"If you did not attempt this sign in, please contact your school administrator immediately.\n\n"
+                f"Best regards,\nSchool SaaS Security Team"
+            )
+            email_provider.send_email(authenticated_user.email, subject, text_body)
+
+            resp_data = {
+                "otp_required": True,
+                "session_id": str(challenge.session_id),
+                "masked_email": mask_email(authenticated_user.email),
+                "message": f"A 6-digit confirmation code has been sent to your registered email ({mask_email(authenticated_user.email)}).",
+            }
+            if getattr(settings, 'DEBUG', False) or getattr(settings, 'TESTING', False):
+                resp_data["dev_code"] = code
+
+            return Response(resp_data, status=status.HTTP_200_OK)
+
         response = Response(response_data, status=status.HTTP_200_OK)
 
         if 'refresh' in response_data:
             set_refresh_cookie(response, response_data['refresh'])
 
         return response
+
+
+class VerifyLoginOTPView(APIView):
+    """
+    Public endpoint: Verifies the 6-digit confirmation code dispatched during login.
+    Upon successful code verification, issues the signed JWT access and refresh tokens.
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        session_id = request.data.get('session_id')
+        code = request.data.get('code', '').strip()
+
+        if not session_id or not code:
+            return Response({
+                "success": False,
+                "message": "Both session_id and verification code are required."
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        challenge = LoginOTPChallenge.objects.filter(
+            session_id=session_id,
+            is_verified=False
+        ).select_related('user', 'user__school').first()
+
+        if not challenge:
+            return Response({
+                "success": False,
+                "message": "Verification session not found or already verified. Please sign in again."
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        if challenge.is_expired():
+            challenge.delete()
+            return Response({
+                "success": False,
+                "message": "Verification code has expired (10-minute limit). Please sign in again."
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        if challenge.attempts >= 5:
+            challenge.delete()
+            return Response({
+                "success": False,
+                "message": "Maximum verification attempts exceeded. Please sign in again."
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        if not challenge.check_code(code):
+            challenge.attempts += 1
+            challenge.save(update_fields=['attempts'])
+            remaining = 5 - challenge.attempts
+            return Response({
+                "success": False,
+                "message": f"Invalid confirmation code. {remaining} attempt(s) remaining."
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Code is valid! Mark challenge verified
+        challenge.is_verified = True
+        challenge.save(update_fields=['is_verified'])
+
+        user = challenge.user
+        refresh = CustomTokenObtainPairSerializer.get_token(user)
+
+        response_data = {
+            'refresh': str(refresh),
+            'access': str(refresh.access_token),
+            'user': {
+                'id': str(user.id),
+                'username': user.username,
+                'email': user.email,
+                'first_name': user.first_name,
+                'last_name': user.last_name,
+                'role': user.role,
+                'must_change_password': user.must_change_password,
+                'preferred_language': user.preferred_language,
+                'school': {
+                    'id': str(user.school.id),
+                    'name': user.school.name,
+                    'slug': user.school.slug,
+                    'status': user.school.status,
+                    'brand_primary_color': user.school.brand_primary_color,
+                    'brand_accent_color': user.school.brand_accent_color,
+                    'logo': user.school.logo,
+                } if user.school else None
+            }
+        }
+
+        response = Response(response_data, status=status.HTTP_200_OK)
+        set_refresh_cookie(response, str(refresh))
+        return response
+
+
+class ResendLoginOTPView(APIView):
+    """
+    Public endpoint: Resends a fresh 6-digit confirmation code for an active login session.
+    Enforces a 60-second cooldown period between resends.
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        session_id = request.data.get('session_id')
+        if not session_id:
+            return Response({
+                "success": False,
+                "message": "session_id is required."
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        challenge = LoginOTPChallenge.objects.filter(
+            session_id=session_id,
+            is_verified=False
+        ).select_related('user').first()
+
+        if not challenge:
+            return Response({
+                "success": False,
+                "message": "Verification session not found or already verified. Please sign in again."
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        now = timezone.now()
+        if challenge.last_sent_at and (now - challenge.last_sent_at) < timedelta(seconds=60):
+            wait_seconds = 60 - int((now - challenge.last_sent_at).total_seconds())
+            return Response({
+                "success": False,
+                "message": f"Please wait {wait_seconds} seconds before requesting a new confirmation code.",
+                "retry_after": wait_seconds
+            }, status=status.HTTP_429_TOO_MANY_REQUESTS)
+
+        user = challenge.user
+        code = f"{secrets.randbelow(900000) + 100000:06d}"
+        challenge.set_code(code)
+        challenge.attempts = 0
+        challenge.expires_at = now + timedelta(minutes=10)
+        challenge.save(update_fields=['code_hash', 'attempts', 'expires_at', 'last_sent_at'])
+
+        email_provider = get_email_provider()
+        subject = f"Your New School SaaS Login Confirmation Code: {code}"
+        text_body = (
+            f"Hello {user.first_name or user.username},\n\n"
+            f"A new confirmation code was requested for your School SaaS sign in.\n\n"
+            f"Your new 6-digit confirmation code is:\n\n"
+            f"    {code}\n\n"
+            f"This code expires in 10 minutes.\n\n"
+            f"Best regards,\nSchool SaaS Security Team"
+        )
+        email_provider.send_email(user.email, subject, text_body)
+
+        resp_data = {
+            "success": True,
+            "message": f"A new confirmation code has been sent to {mask_email(user.email)}.",
+        }
+        if getattr(settings, 'DEBUG', False) or getattr(settings, 'TESTING', False):
+            resp_data["dev_code"] = code
+
+        return Response(resp_data, status=status.HTTP_200_OK)
 
 
 class GoogleLoginView(APIView):
