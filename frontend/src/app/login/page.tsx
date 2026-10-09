@@ -35,7 +35,6 @@ export default function LoginPage() {
   const [otpCode, setOtpCode] = useState("");
   const [otpLoading, setOtpLoading] = useState(false);
   const [otpError, setOtpError] = useState("");
-  const [otpDevCode, setOtpDevCode] = useState("");
   const [otpResendCooldown, setOtpResendCooldown] = useState(0);
 
   useEffect(() => {
@@ -92,7 +91,6 @@ export default function LoginPage() {
       if (res?.otp_required) {
         setOtpSessionId(res.session_id);
         setMaskedEmail(res.masked_email || "your registered email");
-        setOtpDevCode(res.dev_code || "");
         setShowOtpScreen(true);
         setOtpCode("");
         setOtpError("");
@@ -176,7 +174,6 @@ export default function LoginPage() {
         method: 'POST',
         body: JSON.stringify({ session_id: otpSessionId }),
       });
-      if (res.dev_code) setOtpDevCode(res.dev_code);
       setOtpResendCooldown(60);
     } catch (err: any) {
       setOtpError(err.message || "Failed to resend confirmation code.");
@@ -346,13 +343,6 @@ export default function LoginPage() {
                 <strong className="text-slate-900 dark:text-white font-mono text-sm">{maskedEmail}</strong>
               </p>
             </div>
-
-            {otpDevCode && (
-              <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 text-xs flex items-center justify-between">
-                <span>Dev Preview Code:</span>
-                <span className="font-mono font-black text-sm tracking-wider">{otpDevCode}</span>
-              </div>
-            )}
 
             {otpError && (
               <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-400 text-xs text-center">

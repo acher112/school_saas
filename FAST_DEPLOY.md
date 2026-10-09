@@ -81,7 +81,17 @@ $env:MIGRATION_DATABASE_URL = "postgres://school_saas_owner:<OWNER_PASSWORD_HERE
 | `ALLOWED_HOSTS` | Comma-separated domains (NO `https://`) | `localhost,127.0.0.1,.onrender.com` |
 | `DATABASE_URL` | Pooled Neon URL for `school_saas_app` | `postgres://school_saas_app:<APP_PASS>@ep-xyz-pooler.us-east-2.aws.neon.tech/neondb?sslmode=require` |
 | `MIGRATION_DATABASE_URL` | Direct Neon URL for `school_saas_owner` | `postgres://school_saas_owner:<OWNER_PASS>@ep-xyz.us-east-2.aws.neon.tech/neondb?sslmode=require` |
-| `REQUIRE_EMAIL_VERIFICATION` | `false` | `false` |
+| `REQUIRE_EMAIL_VERIFICATION` | `true` | `true` |
+| `REQUIRE_LOGIN_2FA` | `true` | `true` |
+| `EMAIL_PROVIDER` | `smtp` | `smtp` |
+| `EMAIL_HOST` | `smtp.gmail.com` | `smtp.gmail.com` |
+| `EMAIL_PORT` | `587` | `587` |
+| `EMAIL_USE_TLS` | `true` | `true` |
+| `EMAIL_HOST_USER` | Your Google / Gmail email | `yourschool@gmail.com` |
+| `EMAIL_HOST_PASSWORD` | Google 16-digit App Password | `abcd efgh ijkl mnop` |
+
+> **Note on Gmail SMTP**: To generate your 16-character Google App Password:
+> Go to your [Google Account](https://myaccount.google.com/) -> **Security** -> Enable **2-Step Verification** -> Search for **App passwords** -> Create one named "SchoolSaaS" -> Paste the 16 letters into `EMAIL_HOST_PASSWORD`.
 
 5. Click **Create Web Service**. Wait for the build to finish.
 6. Copy your Render service URL (e.g. `https://school-saas-api.onrender.com`).

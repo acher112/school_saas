@@ -178,26 +178,72 @@ export async function apiRequest<T>(
   }
 
   if (!response.ok) {
-    let errMsg = data.detail || data.message;
+    let errMsg = '';
+
+    // 1. Check direct strings or arrays in detail / message / non_field_errors
+    if (typeof data.detail === 'string' && data.detail.trim()) {
+      errMsg = data.detail.trim();
+    } else if (typeof data.message === 'string' && data.message.trim()) {
+      errMsg = data.message.trim();
+    } else if (Array.isArray(data.detail) && data.detail.length > 0) {
+      errMsg = data.detail.map((d: any) => typeof d === 'string' ? d : JSON.stringify(d)).join(', ');
+    } else if (Array.isArray(data.non_field_errors) && data.non_field_errors.length > 0) {
+      errMsg = data.non_field_errors.join(', ');
+    }
+
+    // 2. Structured errors object
     if (!errMsg && data.errors && typeof data.errors === 'object') {
-      const fieldErrors = Object.entries(data.errors).map(([field, errs]) => {
-        const msg = Array.isArray(errs) ? errs.join(', ') : (typeof errs === 'object' ? JSON.stringify(errs) : String(errs));
-        const cleanField = field.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
-        return `${cleanField}: ${msg}`;
-      });
-      errMsg = fieldErrors.join(' | ');
-    } else if (!errMsg && typeof data === 'object' && data !== null) {
-      const entries = Object.entries(data).filter(([k]) => k !== 'success' && k !== 'error');
-      if (entries.length > 0) {
-        errMsg = entries.map(([field, errs]) => {
+      const fieldErrors = Object.entries(data.errors)
+        .filter(([field]) => !['status', 'success', 'title', 'error'].includes(field))
+        .map(([field, errs]) => {
           const msg = Array.isArray(errs) ? errs.join(', ') : (typeof errs === 'object' ? JSON.stringify(errs) : String(errs));
+          if (!msg || msg === '""' || msg === '{}') return '';
+          if (field === 'non_field_errors' || field === 'detail' || field === 'message') {
+            return msg;
+          }
           const cleanField = field.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
           return `${cleanField}: ${msg}`;
-        }).join(' | ');
+        })
+        .filter(Boolean);
+      if (fieldErrors.length > 0) {
+        errMsg = fieldErrors.join(' | ');
       }
     }
 
-    const error: any = new Error(errMsg || `Request failed with status ${response.status}`);
+    // 3. Fallback on other object properties
+    if (!errMsg && typeof data === 'object' && data !== null) {
+      const entries = Object.entries(data)
+        .filter(([k]) => !['status', 'success', 'title', 'error', 'errors'].includes(k))
+        .map(([field, errs]) => {
+          const msg = Array.isArray(errs) ? errs.join(', ') : (typeof errs === 'object' ? JSON.stringify(errs) : String(errs));
+          if (!msg || msg === '""' || msg === '{}') return '';
+          if (field === 'non_field_errors' || field === 'detail' || field === 'message') {
+            return msg;
+          }
+          const cleanField = field.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
+          return `${cleanField}: ${msg}`;
+        })
+        .filter(Boolean);
+      if (entries.length > 0) {
+        errMsg = entries.join(' | ');
+      }
+    }
+
+    // 4. Clean up any trailing/leading artifacts or raw 'Detail:'
+    if (errMsg) {
+      errMsg = errMsg.replace(/^Detail:\s*/i, '').trim();
+    }
+
+    // 5. Context-aware fallback if message is still empty
+    if (!errMsg) {
+      if (response.status === 400 || response.status === 401) {
+        errMsg = "Invalid credentials. Please verify your school code, username/email, and password.";
+      } else {
+        errMsg = `Request failed with status ${response.status}`;
+      }
+    }
+
+    const error: any = new Error(errMsg);
     error.status = response.status;
     error.data = data;
     throw error;

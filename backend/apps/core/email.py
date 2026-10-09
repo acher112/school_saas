@@ -133,7 +133,7 @@ class SMTPEmailProvider(BaseEmailProvider):
     """
 
     def __init__(self, from_email: Optional[str] = None):
-        self.from_email = from_email or getattr(settings, "DEFAULT_FROM_EMAIL", "noreply@schoolsaas.com")
+        self.from_email = from_email or getattr(settings, "DEFAULT_FROM_EMAIL", None) or getattr(settings, "EMAIL_HOST_USER", "noreply@schoolsaas.com")
 
     def send_email(
         self,
@@ -170,13 +170,13 @@ class SMTPEmailProvider(BaseEmailProvider):
 
 def get_email_provider() -> BaseEmailProvider:
     """Factory returning configured email provider."""
-    provider_name = getattr(settings, "EMAIL_PROVIDER", "console").lower()
+    provider_name = getattr(settings, "EMAIL_PROVIDER", "").lower()
     api_key = getattr(settings, "EMAIL_API_KEY", "")
     host_user = getattr(settings, "EMAIL_HOST_USER", "")
 
-    if provider_name in ("smtp", "gmail") and host_user:
-        return SMTPEmailProvider()
     if provider_name == "resend" and api_key:
         return ResendEmailProvider()
+    if (provider_name in ("smtp", "gmail") or host_user) and host_user:
+        return SMTPEmailProvider()
     return ConsoleEmailProvider()
 

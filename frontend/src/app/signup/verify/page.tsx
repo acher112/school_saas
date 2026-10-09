@@ -22,7 +22,6 @@ function VerifyEmailContent() {
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
-  const [devCode, setDevCode] = useState(initialDevCode);
   const [successResult, setSuccessResult] = useState<any>(null);
 
   // 10-minute expiry timer (600 seconds)
@@ -138,9 +137,6 @@ function VerifyEmailContent() {
         body: JSON.stringify({ draft_id: draftId }),
       });
       setCooldownSeconds(60);
-      if (res.dev_code) {
-        setDevCode(res.dev_code);
-      }
     } catch (err: any) {
       setErrorMsg(err.message || "Failed to resend code.");
     } finally {
@@ -220,23 +216,6 @@ function VerifyEmailContent() {
                 {email || "your administrator email"}
               </p>
             </div>
-
-            {/* Test environment dev hint */}
-            {devCode && (
-              <div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 text-amber-800 dark:text-amber-200 text-xs flex items-center justify-between">
-                <div>
-                  <span className="font-bold">Evaluation Mode Code: </span>
-                  <span className="font-mono font-black text-sm tracking-widest">{devCode}</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setDigits(devCode.split(""))}
-                  className="px-2.5 py-1 rounded-lg bg-amber-200 dark:bg-amber-900 text-[10px] font-bold hover:bg-amber-300"
-                >
-                  Auto-fill
-                </button>
-              </div>
-            )}
 
             {errorMsg && (
               <div className="p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-rose-700 dark:text-rose-300 text-xs font-medium">

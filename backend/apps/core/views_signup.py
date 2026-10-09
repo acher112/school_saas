@@ -203,7 +203,29 @@ class SchoolSignupWizardView(APIView):
             f"This code expires in 10 minutes. If you did not request this, please ignore this email.\n\n"
             f"Best regards,\nSchool SaaS Platform Team"
         )
-        email_provider.send_email(admin_email, subject, text_body)
+        html_body = f"""
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 32px 24px; background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0;">
+            <div style="margin-bottom: 24px;">
+                <h1 style="font-size: 20px; font-weight: 800; color: #1e1b4b; margin: 0;">SchoolSaaS Platform</h1>
+            </div>
+            <h2 style="font-size: 18px; font-weight: 700; color: #0f172a; margin-top: 0;">Registration Confirmation Code</h2>
+            <p style="font-size: 14px; color: #475569; line-height: 1.6;">
+                Hello <strong>{admin_name}</strong>,<br>
+                Thank you for registering <strong>{school_name}</strong>. Please enter the verification code below to complete registration and activate your school portal:
+            </p>
+            <div style="background: #f8fafc; border: 2px dashed #6366f1; border-radius: 12px; padding: 20px; text-align: center; margin: 28px 0;">
+                <span style="font-size: 32px; font-weight: 900; letter-spacing: 8px; font-family: monospace; color: #4338ca;">{code}</span>
+            </div>
+            <p style="font-size: 13px; color: #64748b; line-height: 1.5;">
+                This code will expire in <strong>10 minutes</strong>. If you did not request this registration, you can safely ignore this email.
+            </p>
+            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 28px 0;" />
+            <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">
+                SchoolSaaS Cloud &bull; Educational Management Platform
+            </p>
+        </div>
+        """
+        email_provider.send_email(admin_email, subject, text_body, html_body)
 
         from apps.core.email_validator import mask_email
         resp_data = {
@@ -213,8 +235,6 @@ class SchoolSignupWizardView(APIView):
             "masked_email": mask_email(admin_email),
             "message": f"A 6-digit confirmation code has been dispatched to {mask_email(admin_email)}.",
         }
-        if getattr(settings, 'DEBUG', False) or getattr(settings, 'TESTING', False) or not getattr(settings, 'EMAIL_HOST_USER', None):
-            resp_data["dev_code"] = code
 
         return Response(resp_data, status=status.HTTP_201_CREATED)
 
@@ -416,13 +436,30 @@ class ResendVerificationCodeView(APIView):
         email_provider = get_email_provider()
         subject = f"Your New School SaaS Verification Code: {code}"
         text_body = f"Your new 6-digit verification code is: {code}\nThis code expires in 10 minutes."
-        email_provider.send_email(draft.admin_email, subject, text_body)
+        html_body = f"""
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 32px 24px; background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0;">
+            <div style="margin-bottom: 24px;">
+                <h1 style="font-size: 20px; font-weight: 800; color: #1e1b4b; margin: 0;">SchoolSaaS Platform</h1>
+            </div>
+            <h2 style="font-size: 18px; font-weight: 700; color: #0f172a; margin-top: 0;">New Verification Code</h2>
+            <p style="font-size: 14px; color: #475569; line-height: 1.6;">
+                You requested a new verification code. Please enter the code below to complete your registration:
+            </p>
+            <div style="background: #f8fafc; border: 2px dashed #6366f1; border-radius: 12px; padding: 20px; text-align: center; margin: 28px 0;">
+                <span style="font-size: 32px; font-weight: 900; letter-spacing: 8px; font-family: monospace; color: #4338ca;">{code}</span>
+            </div>
+            <p style="font-size: 13px; color: #64748b; line-height: 1.5;">
+                This code will expire in <strong>10 minutes</strong>.
+            </p>
+            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 28px 0;" />
+            <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">
+                SchoolSaaS Cloud &bull; Educational Management Platform
+            </p>
+        </div>
+        """
+        email_provider.send_email(draft.admin_email, subject, text_body, html_body)
 
-        resp_data = {
+        return Response({
             "success": True,
             "message": "A new verification code has been dispatched to your email.",
-        }
-        if getattr(settings, 'DEBUG', False) or getattr(settings, 'TESTING', False) or not getattr(settings, 'EMAIL_HOST_USER', None):
-            resp_data["dev_code"] = code
-
-        return Response(resp_data, status=status.HTTP_200_OK)
+        }, status=status.HTTP_200_OK)

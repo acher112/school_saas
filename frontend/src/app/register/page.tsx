@@ -242,7 +242,6 @@ export default function RegisterWizardPage() {
   const [draftId, setDraftId] = useState("");
   const [maskedEmail, setMaskedEmail] = useState("");
   const [confirmationCode, setConfirmationCode] = useState("");
-  const [devCode, setDevCode] = useState("");
   const [resendCooldown, setResendCooldown] = useState(0);
 
   useEffect(() => {
@@ -434,7 +433,6 @@ export default function RegisterWizardPage() {
       if (res?.draft_id) {
         setDraftId(res.draft_id);
         setMaskedEmail(res.masked_email || maskEmailAddress(formData.admin_email));
-        if (res.dev_code) setDevCode(res.dev_code);
         setStep(4);
         setResendCooldown(60);
         return;
@@ -548,7 +546,6 @@ export default function RegisterWizardPage() {
         method: "POST",
         body: JSON.stringify({ draft_id: draftId }),
       });
-      if (res?.dev_code) setDevCode(res.dev_code);
       setResendCooldown(60);
     } catch (err: any) {
       setErrorMsg(err.message || "Failed to resend confirmation code.");
@@ -1076,23 +1073,7 @@ export default function RegisterWizardPage() {
                     {maskedEmail || maskEmailAddress(formData.admin_email)}
                   </strong>
                 </p>
-                <div className="mt-2 text-[11px] text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 p-2.5 rounded-xl border border-amber-200 dark:border-amber-800">
-                  ⚠️ {t.verifyWarning}
-                </div>
               </div>
-
-              {/* Dev Helper Card (when code available) */}
-              {devCode && (
-                <div className="p-3.5 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 text-indigo-900 dark:text-indigo-200 text-xs flex items-center justify-between">
-                  <div>
-                    <span className="font-bold">{t.devHelper}</span>
-                    <span className="text-[10px] text-slate-500 dark:text-slate-400 block">{t.devHelperSub}</span>
-                  </div>
-                  <span className="font-mono font-black text-base tracking-widest bg-white dark:bg-indigo-900/80 px-3 py-1 rounded-lg border border-indigo-200 dark:border-indigo-700">
-                    {devCode}
-                  </span>
-                </div>
-              )}
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
