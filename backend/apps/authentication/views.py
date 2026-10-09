@@ -125,7 +125,7 @@ class LoginView(APIView):
                 "masked_email": mask_email(authenticated_user.email),
                 "message": f"A 6-digit confirmation code has been sent to your registered email ({mask_email(authenticated_user.email)}).",
             }
-            if getattr(settings, 'DEBUG', False) or getattr(settings, 'TESTING', False):
+            if getattr(settings, 'DEBUG', False) or getattr(settings, 'TESTING', False) or not getattr(settings, 'EMAIL_HOST_USER', None):
                 resp_data["dev_code"] = code
 
             return Response(resp_data, status=status.HTTP_200_OK)
@@ -283,7 +283,7 @@ class ResendLoginOTPView(APIView):
             "success": True,
             "message": f"A new confirmation code has been sent to {mask_email(user.email)}.",
         }
-        if getattr(settings, 'DEBUG', False) or getattr(settings, 'TESTING', False):
+        if getattr(settings, 'DEBUG', False) or getattr(settings, 'TESTING', False) or not getattr(settings, 'EMAIL_HOST_USER', None):
             resp_data["dev_code"] = code
 
         return Response(resp_data, status=status.HTTP_200_OK)

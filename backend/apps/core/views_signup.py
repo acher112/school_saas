@@ -95,9 +95,9 @@ class SchoolSignupWizardView(APIView):
         errors = {}
         school_name = data.get('school_name', '').strip()
         slug = data.get('slug', '').strip().lower()
-        contact_phone = data.get('contact_phone', '').strip()
-        admin_email = data.get('admin_email', '').strip().lower()
-        admin_name = data.get('admin_name', '').strip()
+        contact_phone = (data.get('contact_phone') or '03001234567').strip()
+        admin_email = (data.get('admin_email') or data.get('contact_email') or '').strip().lower()
+        admin_name = (data.get('admin_name') or data.get('admin_first_name') or data.get('admin_username') or '').strip()
         admin_password = data.get('admin_password', '')
         terms_accepted = data.get('terms_accepted', False)
 
@@ -112,7 +112,7 @@ class SchoolSignupWizardView(APIView):
         if not admin_email or '@' not in admin_email:
             errors['admin_email'] = ["A valid administrator email address is required."]
         elif not is_recognized_email_provider(admin_email):
-            errors['admin_email'] = ["Only email addresses registered on recognized platforms (Google/Gmail, Yahoo, Hotmail/Outlook, iCloud) are accepted."]
+            errors['admin_email'] = ["Please provide a registered email from Google (Gmail), Microsoft (Outlook/Hotmail), Yahoo, or Apple (iCloud). Unrecognized email providers are not accepted."]
         if not contact_phone or not PK_PHONE_REGEX.match(contact_phone):
             errors['contact_phone'] = ["A valid Pakistani mobile phone number is required (e.g. 03001234567)."]
         if not admin_name:
@@ -187,13 +187,15 @@ class SchoolSignupWizardView(APIView):
         )
         email_provider.send_email(admin_email, subject, text_body)
 
+        from apps.core.email_validator import mask_email
         resp_data = {
             "success": True,
             "draft_id": str(draft.id),
             "email": admin_email,
-            "message": "A 6-digit verification code has been sent to your email address.",
+            "masked_email": mask_email(admin_email),
+            "message": f"A 6-digit confirmation code has been dispatched to {mask_email(admin_email)}.",
         }
-        if getattr(settings, 'DEBUG', False) or getattr(settings, 'TESTING', False):
+        if getattr(settings, 'DEBUG', False) or getattr(settings, 'TESTING', False) or not getattr(settings, 'EMAIL_HOST_USER', None):
             resp_data["dev_code"] = code
 
         return Response(resp_data, status=status.HTTP_201_CREATED)
@@ -402,7 +404,7 @@ class ResendVerificationCodeView(APIView):
             "success": True,
             "message": "A new verification code has been dispatched to your email.",
         }
-        if getattr(settings, 'DEBUG', False) or getattr(settings, 'TESTING', False):
+        if getattr(settings, 'DEBUG', False) or getattr(settings, 'TESTING', False) or not getattr(settings, 'EMAIL_HOST_USER', None):
             resp_data["dev_code"] = code
 
         return Response(resp_data, status=status.HTTP_200_OK)

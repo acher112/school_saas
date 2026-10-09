@@ -81,7 +81,7 @@ def validate_recognized_email(email: str) -> str:
 
     if not is_recognized_email_provider(cleaned):
         raise serializers.ValidationError(
-            "Only email addresses registered on recognized platforms (Google/Gmail, Yahoo, Hotmail/Outlook, iCloud) are accepted."
+            "Please provide a registered email from Google (Gmail), Microsoft (Outlook/Hotmail), Yahoo, or Apple (iCloud). Unrecognized email providers are not accepted."
         )
 
     return cleaned
