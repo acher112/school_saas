@@ -23,6 +23,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [errorDetail, setErrorDetail] = useState("");
   const [authSuccess, setAuthSuccess] = useState<any>(null);
 
   // Multi-school selection state
@@ -69,6 +70,7 @@ export default function LoginPage() {
     if (e) e.preventDefault();
     setLoading(true);
     setErrorMsg("");
+    setErrorDetail("");
     setMultiSchools(null);
 
     const targetSchoolCode = overrideSchoolCode !== undefined ? overrideSchoolCode : schoolCode;
@@ -119,6 +121,11 @@ export default function LoginPage() {
         setMultiSchools(err.data.schools);
       } else {
         setErrorMsg(err.message || "Failed to authenticate. Please check your credentials.");
+        if (err.detail && err.detail !== err.message) {
+          setErrorDetail(err.detail);
+        } else if (err.status) {
+          setErrorDetail(`HTTP Status: ${err.status}`);
+        }
       }
     } finally {
       setLoading(false);
@@ -454,9 +461,18 @@ export default function LoginPage() {
             </div>
 
             {errorMsg && (
-              <div className="p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-rose-700 dark:text-rose-300 text-xs font-medium flex items-center gap-2">
-                <span>⚠️</span>
-                <span>{errorMsg}</span>
+              <div className="p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-rose-700 dark:text-rose-300 text-xs font-medium space-y-1.5">
+                <div className="flex items-start gap-2">
+                  <span className="text-sm">⚠️</span>
+                  <div className="flex-1">
+                    <p>{errorMsg}</p>
+                    {errorDetail && (
+                      <p className="mt-1.5 text-[11px] font-mono text-rose-600 dark:text-rose-400 bg-rose-100/70 dark:bg-rose-950/60 p-2 rounded-lg break-all">
+                        Server Detail: {errorDetail}
+                      </p>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
 

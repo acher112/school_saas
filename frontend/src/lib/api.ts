@@ -234,25 +234,25 @@ export async function apiRequest<T>(
       errMsg = errMsg.replace(/^Detail:\s*/i, '').trim();
     }
 
-    // 5. Friendly non-programmer translation for server errors (500s)
-    if (response.status >= 500 || (errMsg && /status 500/i.test(errMsg))) {
-      errMsg = "Our server is temporarily unavailable or experiencing high traffic. Please check your school code and credentials, or try again in a few moments.";
-    }
-
-    // 6. Context-aware fallback if message is still empty
+    // 5. If no specific message was found from server, provide contextual fallback
     if (!errMsg) {
-      if (response.status === 400 || response.status === 401) {
+      if (response.status >= 500) {
+        errMsg = "Server temporarily unavailable. Please verify your connection or check server logs.";
+      } else if (response.status === 400 || response.status === 401) {
         errMsg = "Invalid credentials. Please verify your school code, username/email, and password.";
       } else if (response.status === 404) {
-        errMsg = "The requested resource or account was not found.";
+        errMsg = "The requested account or resource was not found.";
       } else {
-        errMsg = "Unable to complete request at this time. Please try again shortly.";
+        errMsg = `Request could not be completed (HTTP ${response.status}).`;
       }
     }
+
+    console.error(`[API ${response.status}] ${endpoint}:`, data);
 
     const error: any = new Error(errMsg);
     error.status = response.status;
     error.data = data;
+    error.detail = typeof data?.detail === 'string' ? data.detail : (data?.message || (data?.errors ? JSON.stringify(data.errors) : ''));
     throw error;
   }
 
