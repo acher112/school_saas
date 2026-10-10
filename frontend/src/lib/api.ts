@@ -2,7 +2,10 @@
  * Frontend API client communicating with Django REST Framework backend.
  * Provides strict tenant isolation, session purging, and transparent 401 refresh handling.
  */
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+// Route API calls through Next.js / Vercel rewrites in browser context so every request is logged in Vercel logs
+const API_BASE_URL = typeof window !== 'undefined'
+  ? ''
+  : (process.env.BACKEND_INTERNAL_URL || process.env.BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000').replace(/\/+$/, '');
 
 let _inMemoryAccessToken: string | null = null;
 let _inMemorySchoolSlug: string | null = null;

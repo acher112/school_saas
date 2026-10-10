@@ -95,60 +95,75 @@ class LoginView(APIView):
         # 2FA Email Confirmation Code flow on every login
         require_login_2fa = getattr(settings, 'REQUIRE_LOGIN_2FA', True)
         if require_login_2fa and authenticated_user and authenticated_user.email:
-            code = f"{secrets.randbelow(900000) + 100000:06d}"
-            # Invalidate any prior unverified challenges
-            LoginOTPChallenge.objects.filter(user=authenticated_user, is_verified=False).delete()
-            challenge = LoginOTPChallenge(
-                user=authenticated_user,
-                email=authenticated_user.email,
-                expires_at=timezone.now() + timedelta(minutes=10),
-            )
-            challenge.set_code(code)
-            challenge.save()
+            try:
+                code = f"{secrets.randbelow(900000) + 100000:06d}"
+                # Invalidate any prior unverified challenges
+                LoginOTPChallenge.objects.filter(user=authenticated_user, is_verified=False).delete()
+                challenge = LoginOTPChallenge(
+                    user=authenticated_user,
+                    email=authenticated_user.email,
+                    expires_at=timezone.now() + timedelta(minutes=10),
+                )
+                challenge.set_code(code)
+                challenge.save()
 
-            email_provider = get_email_provider()
-            subject = f"Your School SaaS Login Confirmation Code: {code}"
-            text_body = (
-                f"Hello {authenticated_user.first_name or authenticated_user.username},\n\n"
-                f"You are signing in to School SaaS.\n\n"
-                f"Your 6-digit confirmation code is:\n\n"
-                f"    {code}\n\n"
-                f"This security code expires in 10 minutes.\n"
-                f"If you did not attempt this sign in, please contact your school administrator immediately.\n\n"
-                f"Best regards,\nSchool SaaS Security Team"
-            )
-            html_body = f"""
-            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 32px 24px; background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0;">
-                <div style="margin-bottom: 24px;">
-                    <h1 style="font-size: 20px; font-weight: 800; color: #1e1b4b; margin: 0;">SchoolSaaS Platform</h1>
+                email_provider = get_email_provider()
+                subject = f"Your School SaaS Login Confirmation Code: {code}"
+                text_body = (
+                    f"Hello {authenticated_user.first_name or authenticated_user.username},\n\n"
+                    f"You are signing in to School SaaS.\n\n"
+                    f"Your 6-digit confirmation code is:\n\n"
+                    f"    {code}\n\n"
+                    f"This security code expires in 10 minutes.\n"
+                    f"If you did not attempt this sign in, please contact your school administrator immediately.\n\n"
+                    f"Best regards,\nSchool SaaS Security Team"
+                )
+                html_body = f"""
+                <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 32px 24px; background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0;">
+                    <div style="margin-bottom: 24px;">
+                        <h1 style="font-size: 20px; font-weight: 800; color: #1e1b4b; margin: 0;">SchoolSaaS Platform</h1>
+                    </div>
+                    <h2 style="font-size: 18px; font-weight: 700; color: #0f172a; margin-top: 0;">Sign-In Security Verification</h2>
+                    <p style="font-size: 14px; color: #475569; line-height: 1.6;">
+                        Hello <strong>{authenticated_user.first_name or authenticated_user.username}</strong>,<br>
+                        You are signing in to School SaaS. Please enter the security confirmation code below to proceed:
+                    </p>
+                    <div style="background: #f8fafc; border: 2px dashed #6366f1; border-radius: 12px; padding: 20px; text-align: center; margin: 28px 0;">
+                        <span style="font-size: 32px; font-weight: 900; letter-spacing: 8px; font-family: monospace; color: #4338ca;">{code}</span>
+                    </div>
+                    <p style="font-size: 13px; color: #64748b; line-height: 1.5;">
+                        This security code expires in <strong>10 minutes</strong>. If you did not initiate this login, please contact your school administrator immediately.
+                    </p>
+                    <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 28px 0;" />
+                    <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">
+                        SchoolSaaS Cloud &bull; Two-Factor Security Protection
+                    </p>
                 </div>
-                <h2 style="font-size: 18px; font-weight: 700; color: #0f172a; margin-top: 0;">Sign-In Security Verification</h2>
-                <p style="font-size: 14px; color: #475569; line-height: 1.6;">
-                    Hello <strong>{authenticated_user.first_name or authenticated_user.username}</strong>,<br>
-                    You are signing in to School SaaS. Please enter the security confirmation code below to proceed:
-                </p>
-                <div style="background: #f8fafc; border: 2px dashed #6366f1; border-radius: 12px; padding: 20px; text-align: center; margin: 28px 0;">
-                    <span style="font-size: 32px; font-weight: 900; letter-spacing: 8px; font-family: monospace; color: #4338ca;">{code}</span>
-                </div>
-                <p style="font-size: 13px; color: #64748b; line-height: 1.5;">
-                    This security code expires in <strong>10 minutes</strong>. If you did not initiate this login, please contact your school administrator immediately.
-                </p>
-                <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 28px 0;" />
-                <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">
-                    SchoolSaaS Cloud &bull; Two-Factor Security Protection
-                </p>
-            </div>
-            """
-            email_provider.send_email(authenticated_user.email, subject, text_body, html_body)
+                """
+                email_sent = email_provider.send_email(authenticated_user.email, subject, text_body, html_body)
 
-            resp_data = {
-                "otp_required": True,
-                "session_id": str(challenge.session_id),
-                "masked_email": mask_email(authenticated_user.email),
-                "message": f"A 6-digit confirmation code has been sent to your registered email ({mask_email(authenticated_user.email)}).",
-            }
+                email_note = ""
+                from apps.core.email import ConsoleEmailProvider
+                if isinstance(email_provider, ConsoleEmailProvider) or not getattr(settings, 'EMAIL_HOST_USER', None):
+                    email_note = " (Note: SMTP credentials not set on server; email logged to console)"
+                elif not email_sent:
+                    email_note = " (Notice: Email delivery failed; check Gmail App Password)"
 
-            return Response(resp_data, status=status.HTTP_200_OK)
+                resp_data = {
+                    "otp_required": True,
+                    "session_id": str(challenge.session_id),
+                    "masked_email": mask_email(authenticated_user.email),
+                    "message": f"A 6-digit confirmation code has been sent to your registered email ({mask_email(authenticated_user.email)}).{email_note}",
+                }
+
+                return Response(resp_data, status=status.HTTP_200_OK)
+            except Exception as exc:
+                logger.exception(f"Login OTP generation encountered error: {exc}")
+                # Fallback safeguard: Never block legitimate user with HTTP 500
+                response = Response(response_data, status=status.HTTP_200_OK)
+                if 'refresh' in response_data:
+                    set_refresh_cookie(response, response_data['refresh'])
+                return response
 
         response = Response(response_data, status=status.HTTP_200_OK)
 
@@ -319,11 +334,18 @@ class ResendLoginOTPView(APIView):
             </p>
         </div>
         """
-        email_provider.send_email(user.email, subject, text_body, html_body)
+        email_sent = email_provider.send_email(user.email, subject, text_body, html_body)
+
+        email_note = ""
+        from apps.core.email import ConsoleEmailProvider
+        if isinstance(email_provider, ConsoleEmailProvider) or not getattr(settings, 'EMAIL_HOST_USER', None):
+            email_note = " (Note: SMTP credentials not set on server; email logged to console)"
+        elif not email_sent:
+            email_note = " (Notice: Email delivery failed; check Gmail App Password)"
 
         return Response({
             "success": True,
-            "message": f"A new confirmation code has been sent to {mask_email(user.email)}.",
+            "message": f"A new confirmation code has been sent to {mask_email(user.email)}.{email_note}",
         }, status=status.HTTP_200_OK)
 
 

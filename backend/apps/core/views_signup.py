@@ -225,15 +225,22 @@ class SchoolSignupWizardView(APIView):
             </p>
         </div>
         """
-        email_provider.send_email(admin_email, subject, text_body, html_body)
+        email_sent = email_provider.send_email(admin_email, subject, text_body, html_body)
 
         from apps.core.email_validator import mask_email
+        email_note = ""
+        from apps.core.email import ConsoleEmailProvider
+        if isinstance(email_provider, ConsoleEmailProvider) or not getattr(settings, 'EMAIL_HOST_USER', None):
+            email_note = " (Note: SMTP credentials not set on server; email logged to console)"
+        elif not email_sent:
+            email_note = " (Notice: Email delivery failed; check Gmail App Password)"
+
         resp_data = {
             "success": True,
             "draft_id": str(draft.id),
             "email": admin_email,
             "masked_email": mask_email(admin_email),
-            "message": f"A 6-digit confirmation code has been dispatched to {mask_email(admin_email)}.",
+            "message": f"A 6-digit confirmation code has been dispatched to {mask_email(admin_email)}.{email_note}",
         }
 
         return Response(resp_data, status=status.HTTP_201_CREATED)
@@ -457,9 +464,16 @@ class ResendVerificationCodeView(APIView):
             </p>
         </div>
         """
-        email_provider.send_email(draft.admin_email, subject, text_body, html_body)
+        email_sent = email_provider.send_email(draft.admin_email, subject, text_body, html_body)
+
+        email_note = ""
+        from apps.core.email import ConsoleEmailProvider
+        if isinstance(email_provider, ConsoleEmailProvider) or not getattr(settings, 'EMAIL_HOST_USER', None):
+            email_note = " (Note: SMTP credentials not set on server; email logged to console)"
+        elif not email_sent:
+            email_note = " (Notice: Email delivery failed; check Gmail App Password)"
 
         return Response({
             "success": True,
-            "message": "A new verification code has been dispatched to your email.",
+            "message": f"A new verification code has been dispatched to your email.{email_note}",
         }, status=status.HTTP_200_OK)
