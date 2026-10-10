@@ -244,6 +244,45 @@ export default function RegisterWizardPage() {
   const [confirmationCode, setConfirmationCode] = useState("");
   const [resendCooldown, setResendCooldown] = useState(0);
 
+  // Test record reset states
+  const [resettingData, setResettingData] = useState(false);
+  const [resetSuccessMsg, setResetSuccessMsg] = useState<string | null>(null);
+
+  const handleResetTestData = async (opts: { email?: string; slug?: string; clear_all?: boolean }) => {
+    setResettingData(true);
+    setResetSuccessMsg(null);
+    try {
+      const res: any = await apiRequest("/api/v1/core/signup/reset-test-data/", {
+        method: "POST",
+        body: JSON.stringify(opts),
+      });
+      setResetSuccessMsg(res.message || "Test records successfully cleared.");
+      if (opts.email || opts.clear_all) {
+        setFieldErrors((prev) => {
+          const next = { ...prev };
+          delete next.admin_email;
+          return next;
+        });
+      }
+      if (opts.slug || opts.clear_all) {
+        setFieldErrors((prev) => {
+          const next = { ...prev };
+          delete next.slug;
+          return next;
+        });
+        setSlugStatus("available");
+      }
+      if (opts.clear_all) {
+        setFieldErrors({});
+        setErrorMsg("");
+      }
+    } catch (err: any) {
+      alert(err.message || "Failed to reset test records.");
+    } finally {
+      setResettingData(false);
+    }
+  };
+
   useEffect(() => {
     // Strictly clear all previous session and school data on mount
     clearAllSessionData();
@@ -570,6 +609,23 @@ export default function RegisterWizardPage() {
         </Link>
 
         <div className="flex items-center gap-2.5">
+          <button
+            type="button"
+            onClick={() => {
+              if (
+                window.confirm(
+                  "Wipe all previous test registrations from the database? This will free up all your test emails and subdomain slugs so you can register again."
+                )
+              ) {
+                handleResetTestData({ clear_all: true });
+              }
+            }}
+            disabled={resettingData}
+            className="text-xs font-semibold text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 border border-rose-200 dark:border-rose-900/50 bg-rose-50/50 dark:bg-rose-950/20 px-2.5 py-1 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+            title="Clear all test registrations to reuse your emails"
+          >
+            {resettingData ? "Cleaning..." : "🧹 Clear Test Records"}
+          </button>
           <LanguageToggle currentLang={lang} onToggle={setLang} />
           <ThemeToggle />
           <Link
@@ -618,6 +674,23 @@ export default function RegisterWizardPage() {
         </div>
 
         <div className="p-6 sm:p-8 rounded-3xl bg-white dark:bg-[#161e31] border border-slate-200 dark:border-slate-800 shadow-xl space-y-6">
+          {/* Test Reset Success Banner */}
+          {resetSuccessMsg && (
+            <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-base">✅</span>
+                <span className="font-semibold leading-relaxed">{resetSuccessMsg}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setResetSuccessMsg(null)}
+                className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 font-bold ml-2 text-sm"
+              >
+                &times;
+              </button>
+            </div>
+          )}
+
           {/* Global Error Banner */}
           {errorMsg && (
             <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-xs space-y-2">
@@ -722,9 +795,21 @@ export default function RegisterWizardPage() {
                   </span>
                 </div>
                 {fieldErrors.slug && (
-                  <p className="text-xs text-rose-600 dark:text-rose-400 font-semibold mt-1">
-                    ⚠️ {fieldErrors.slug}
-                  </p>
+                  <div className="mt-1">
+                    <p className="text-xs text-rose-600 dark:text-rose-400 font-semibold">
+                      ⚠️ {fieldErrors.slug}
+                    </p>
+                    {fieldErrors.slug.toLowerCase().includes("already registered") && (
+                      <button
+                        type="button"
+                        onClick={() => handleResetTestData({ slug: formData.slug })}
+                        disabled={resettingData}
+                        className="mt-1.5 inline-flex items-center gap-1.5 text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-bold underline cursor-pointer disabled:opacity-50"
+                      >
+                        {resettingData ? "Clearing old slug..." : "🔄 Clear old test school with this slug and retry"}
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
 
@@ -835,9 +920,21 @@ export default function RegisterWizardPage() {
                 </div>
 
                 {fieldErrors.admin_email && (
-                  <p className="text-xs text-rose-600 dark:text-rose-400 font-semibold mt-1">
-                    ⚠️ {fieldErrors.admin_email}
-                  </p>
+                  <div className="mt-1">
+                    <p className="text-xs text-rose-600 dark:text-rose-400 font-semibold">
+                      ⚠️ {fieldErrors.admin_email}
+                    </p>
+                    {fieldErrors.admin_email.toLowerCase().includes("already registered") && (
+                      <button
+                        type="button"
+                        onClick={() => handleResetTestData({ email: formData.admin_email })}
+                        disabled={resettingData}
+                        className="mt-1.5 inline-flex items-center gap-1.5 text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-bold underline cursor-pointer disabled:opacity-50"
+                      >
+                        {resettingData ? "Clearing old test record..." : "🔄 Clear old test record for this email and retry"}
+                      </button>
+                    )}
+                  </div>
                 )}
 
                 {/* Provider Badges Strip */}

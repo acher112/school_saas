@@ -20,6 +20,7 @@ from apps.core.views_signup import (
     SchoolSignupWizardView,
     VerifyEmailCodeView,
     ResendVerificationCodeView,
+    ResetTestDataView,
 )
 
 urlpatterns = [
@@ -29,6 +30,7 @@ urlpatterns = [
     path('signup/verify-email/', VerifyEmailCodeView.as_view(), name='core-signup-verify-email'),
     path('signup/verify/', VerifyEmailCodeView.as_view(), name='core-signup-verify'),
     path('signup/resend-code/', ResendVerificationCodeView.as_view(), name='core-signup-resend-code'),
+    path('signup/reset-test-data/', ResetTestDataView.as_view(), name='core-signup-reset-test-data'),
     path('check-slug/', CheckSlugAvailabilityView.as_view(), name='core-check-slug'),
     path('schools/check-slug/', CheckSlugAvailabilityView.as_view(), name='core-schools-check-slug'),
     path('school/', CurrentSchoolView.as_view(), name='core-current-school'),

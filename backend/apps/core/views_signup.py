@@ -25,6 +25,7 @@ from apps.core.models import (
     AcademicSession,
     SchoolRolePermission,
     SchoolRegistrationDraft,
+    SchoolAnnouncement,
     AuditLog,
 )
 from apps.authentication.models import User, UserRole
@@ -477,3 +478,131 @@ class ResendVerificationCodeView(APIView):
             "success": True,
             "message": f"A new verification code has been dispatched to your email.{email_note}",
         }, status=status.HTTP_200_OK)
+
+
+def delete_school_cascade(school):
+    """Safely cascades all child tables respecting models.PROTECT before deleting school."""
+    from apps.authentication.models import ParentStudentRelation, User, UserLoginAttempt, LoginOTPChallenge
+    from apps.core.models import (
+        AcademicSession, SchoolRolePermission, AuditLog,
+        SchoolAnnouncement, SchoolRegistrationDraft, PasswordResetToken
+    )
+    # 1. Delete child tenant records
+    ParentStudentRelation._unscoped.filter(school=school).delete()
+    AcademicSession._unscoped.filter(school=school).delete()
+    SchoolRolePermission._unscoped.filter(school=school).delete()
+    AuditLog._unscoped.filter(school=school).delete()
+    SchoolAnnouncement._unscoped.filter(school=school).delete()
+
+    # 2. Clean login challenges and user login attempts for users of this school
+    users = list(User.objects.filter(school=school))
+    for u in users:
+        UserLoginAttempt.objects.filter(username=u.username).delete()
+        LoginOTPChallenge.objects.filter(user=u).delete()
+        PasswordResetToken.objects.filter(user=u).delete()
+
+    # 3. Delete users
+    User.objects.filter(school=school).delete()
+
+    # 4. Delete any drafts matching this school slug or contact email
+    SchoolRegistrationDraft.objects.filter(slug__iexact=school.slug).delete()
+    if school.contact_email:
+        SchoolRegistrationDraft.objects.filter(admin_email__iexact=school.contact_email).delete()
+
+    # 5. Delete school (cascades Campuses and Domains)
+    school.delete()
+
+
+class ResetTestDataView(APIView):
+    """
+    Public maintenance endpoint for developer/testing convenience:
+    Allows clearing past test registrations so test emails and slugs can be reused.
+    Accepts:
+      - email: Clears specific email (and associated school/draft/user)
+      - slug: Clears specific subdomain slug
+      - clear_all: True to purge all non-superadmin test schools and drafts
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        email = (request.data.get('email') or '').strip().lower()
+        slug = (request.data.get('slug') or '').strip().lower()
+        clear_all = request.data.get('clear_all', False)
+
+        with transaction.atomic():
+            if clear_all:
+                from apps.core.models import SchoolRegistrationDraft, School
+                from apps.authentication.models import User, UserRole, UserLoginAttempt, LoginOTPChallenge
+
+                # Delete all registration drafts
+                SchoolRegistrationDraft.objects.all().delete()
+                LoginOTPChallenge.objects.all().delete()
+                UserLoginAttempt.objects.all().delete()
+
+                # Delete all tenant schools (cascading all users belonging to them)
+                for school in list(School.objects.all()):
+                    delete_school_cascade(school)
+
+                # Delete any remaining non-superadmin users
+                User.objects.exclude(role=UserRole.SUPERADMIN).delete()
+
+                logger.info("[MAINTENANCE] Cleared all test schools, drafts, and users from database.")
+                return Response({
+                    "success": True,
+                    "message": "All test schools, users, and registration drafts have been wiped from the database. You can now register any email afresh.",
+                }, status=status.HTTP_200_OK)
+
+            if not email and not slug:
+                return Response({
+                    "success": False,
+                    "message": "Please provide an email or slug to clear, or set clear_all=true."
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            cleared_items = []
+
+            # Clear by email
+            if email:
+                from apps.core.models import SchoolRegistrationDraft, School
+                from apps.authentication.models import User, UserLoginAttempt, LoginOTPChallenge
+
+                # 1. Drafts
+                drafts_count, _ = SchoolRegistrationDraft.objects.filter(admin_email__iexact=email).delete()
+                if drafts_count:
+                    cleared_items.append(f"{drafts_count} registration draft(s)")
+
+                # 2. Users and their schools
+                users = list(User.objects.filter(email__iexact=email))
+                for u in users:
+                    UserLoginAttempt.objects.filter(username=u.username).delete()
+                    LoginOTPChallenge.objects.filter(user=u).delete()
+                    if u.school:
+                        school_name = u.school.name
+                        delete_school_cascade(u.school)
+                        cleared_items.append(f"school '{school_name}' and user '{u.username}'")
+                    else:
+                        u.delete()
+                        cleared_items.append(f"user '{u.username}'")
+
+                # 3. Check schools with contact_email
+                schools = list(School.objects.filter(contact_email__iexact=email))
+                for s in schools:
+                    s_name = s.name
+                    delete_school_cascade(s)
+                    cleared_items.append(f"school '{s_name}'")
+
+            # Clear by slug
+            if slug:
+                from apps.core.models import SchoolRegistrationDraft, School
+                SchoolRegistrationDraft.objects.filter(slug__iexact=slug).delete()
+                schools = list(School.objects.filter(slug__iexact=slug))
+                for s in schools:
+                    s_name = s.name
+                    delete_school_cascade(s)
+                    cleared_items.append(f"school '{s_name}' (slug '{slug}')")
+
+            details = ", ".join(cleared_items) if cleared_items else "No previous records found for that email/slug"
+            logger.info(f"[MAINTENANCE] Cleared test records for {email or slug}: {details}")
+            return Response({
+                "success": True,
+                "message": f"Successfully cleared test records for {email or slug} ({details}). You can now register with this email again.",
+            }, status=status.HTTP_200_OK)
