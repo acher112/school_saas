@@ -49,22 +49,44 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         # Extract client IP address for IP-aware throttling
         client_ip = '127.0.0.1'
         if request:
-            x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+            x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR', '')
+            raw_ip = ''
             if x_forwarded_for:
-                client_ip = x_forwarded_for.split(',')[0].strip()
-            else:
-                client_ip = request.META.get('REMOTE_ADDR', '127.0.0.1')
+                raw_ip = x_forwarded_for.split(',')[0].strip()
+            if not raw_ip:
+                raw_ip = request.META.get('REMOTE_ADDR', '127.0.0.1').strip()
+
+            # Strip port if present (e.g. 192.168.1.1:50000 or [::1]:8000)
+            if raw_ip.startswith('[') and ']' in raw_ip:
+                raw_ip = raw_ip[1:raw_ip.index(']')]
+            elif ':' in raw_ip and raw_ip.count(':') == 1:
+                raw_ip = raw_ip.split(':')[0]
+
+            try:
+                import ipaddress
+                ipaddress.ip_address(raw_ip)
+                client_ip = raw_ip
+            except Exception:
+                client_ip = '127.0.0.1'
 
         # 1. Check IP-aware account lockout
-        attempt_record = UserLoginAttempt.objects.filter(
-            username=identifier,
-            ip_address=client_ip
-        ).first()
+        attempt_record = None
+        try:
+            attempt_record = UserLoginAttempt.objects.filter(
+                username=identifier,
+                ip_address=client_ip
+            ).first()
 
-        if attempt_record and attempt_record.is_locked():
-            raise serializers.ValidationError(
-                "Too many failed login attempts from this location. Account temporarily locked for 15 minutes."
-            )
+            if attempt_record and attempt_record.is_locked():
+                raise serializers.ValidationError(
+                    "Too many failed login attempts from this location. Account temporarily locked for 15 minutes."
+                )
+        except serializers.ValidationError:
+            raise
+        except Exception as exc:
+            import logging
+            logging.getLogger(__name__).warning(f"UserLoginAttempt check error: {exc}")
+            attempt_record = None
 
         # 2. Resolve matching user based on identifier and optional school_code
         authenticated_user = None
@@ -72,7 +94,9 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         if school_code:
             school = School.objects.filter(slug__iexact=school_code).first()
             if not school:
-                raise serializers.ValidationError("School not found with the provided school code.")
+                raise serializers.ValidationError(
+                    f"No school found with code '{school_code}'. Please check your school code."
+                )
             matching_user = User.objects.filter(
                 models.Q(username__iexact=identifier) | models.Q(email__iexact=identifier),
                 school=school
@@ -109,19 +133,37 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
         if not authenticated_user:
             # Record failed attempt tied to this IP
-            if not attempt_record:
-                attempt_record = UserLoginAttempt(
-                    username=identifier,
-                    ip_address=client_ip
+            try:
+                if not attempt_record:
+                    attempt_record = UserLoginAttempt(
+                        username=identifier,
+                        ip_address=client_ip
+                    )
+                attempt_record.record_failure()
+            except Exception as exc:
+                import logging
+                logging.getLogger(__name__).warning(f"UserLoginAttempt record failure error: {exc}")
+
+            if school_code:
+                raise serializers.ValidationError(
+                    "Invalid credentials for this school. Please verify your username/email and password."
                 )
-            attempt_record.record_failure()
-            raise serializers.ValidationError(
-                "Invalid credentials provided. Please check your username and password."
-            )
+            elif '@' not in identifier:
+                raise serializers.ValidationError(
+                    "Account not found for this username. Please enter your School Code to sign in to your institution."
+                )
+            else:
+                raise serializers.ValidationError(
+                    "Invalid email or password. Please verify your credentials or enter your School Code."
+                )
 
         # 3. Reset failure counter on success
         if attempt_record:
-            attempt_record.reset_failures()
+            try:
+                attempt_record.reset_failures()
+            except Exception as exc:
+                import logging
+                logging.getLogger(__name__).warning(f"UserLoginAttempt reset error: {exc}")
 
         # 4. Check user status
         if not authenticated_user.is_active:

@@ -475,6 +475,11 @@ export default function LoginPage() {
                   placeholder="e.g. beaconhall"
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-mono focus:ring-2 focus:ring-blue-500 outline-none"
                 />
+                {!schoolCode && identifier.trim() && !identifier.includes('@') && (
+                  <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1.5 font-medium leading-tight">
+                    💡 When using a username, entering your School Code helps locate your institution directly.
+                  </p>
+                )}
               </div>
 
               <div>

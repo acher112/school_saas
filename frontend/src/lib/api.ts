@@ -234,12 +234,19 @@ export async function apiRequest<T>(
       errMsg = errMsg.replace(/^Detail:\s*/i, '').trim();
     }
 
-    // 5. Context-aware fallback if message is still empty
+    // 5. Friendly non-programmer translation for server errors (500s)
+    if (response.status >= 500 || (errMsg && /status 500/i.test(errMsg))) {
+      errMsg = "Our server is temporarily unavailable or experiencing high traffic. Please check your school code and credentials, or try again in a few moments.";
+    }
+
+    // 6. Context-aware fallback if message is still empty
     if (!errMsg) {
       if (response.status === 400 || response.status === 401) {
         errMsg = "Invalid credentials. Please verify your school code, username/email, and password.";
+      } else if (response.status === 404) {
+        errMsg = "The requested resource or account was not found.";
       } else {
-        errMsg = `Request failed with status ${response.status}`;
+        errMsg = "Unable to complete request at this time. Please try again shortly.";
       }
     }
 
