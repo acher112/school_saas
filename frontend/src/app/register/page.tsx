@@ -528,7 +528,12 @@ export default function RegisterWizardPage() {
 
       setFieldErrors(newFieldErrors);
       setErrorStep(determinedStep);
-      setErrorMsg(err.message || "Failed to submit registration. Please verify subdomain and administrator details.");
+
+      let cleanError = err.message || "Failed to submit registration. Please verify subdomain and administrator details.";
+      if (cleanError === "Failed to fetch" || cleanError.toLowerCase().includes("failed to fetch")) {
+        cleanError = "Connection to server timed out or failed. The backend service may be waking up from sleep (takes up to 50 seconds on free hosting). Please wait a moment and click Send Confirmation Code again.";
+      }
+      setErrorMsg(cleanError);
     } finally {
       setLoading(false);
     }

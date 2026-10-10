@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  skipTrailingSlashRedirect: true,
   async rewrites() {
     const rawBackendUrl =
       process.env.BACKEND_INTERNAL_URL ||
