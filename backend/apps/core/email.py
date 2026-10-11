@@ -218,6 +218,13 @@ class BrevoEmailProvider(BaseEmailProvider):
                     return True
                 logger.warning(f"Brevo API returned status {resp.status}")
                 return False
+        except urllib.error.HTTPError as e:
+            try:
+                err_body = e.read().decode("utf-8")
+            except Exception:
+                err_body = str(e)
+            logger.error(f"Brevo API HTTP error {e.code}: {err_body}")
+            return False
         except Exception as e:
             logger.error(f"Brevo API error: {str(e)}")
             return False
@@ -225,11 +232,11 @@ class BrevoEmailProvider(BaseEmailProvider):
 
 def get_email_provider() -> BaseEmailProvider:
     """Factory returning configured email provider."""
-    provider_name = getattr(settings, "EMAIL_PROVIDER", "").lower()
+    provider_name = getattr(settings, "EMAIL_PROVIDER", "").lower().strip()
     api_key = getattr(settings, "EMAIL_API_KEY", "")
     host_user = getattr(settings, "EMAIL_HOST_USER", "")
 
-    if (provider_name == "brevo" or "brevo" in getattr(settings, "EMAIL_HOST", "").lower()) and api_key:
+    if (provider_name in ("brevo", "bravo") or "brevo" in getattr(settings, "EMAIL_HOST", "").lower()) and api_key:
         return BrevoEmailProvider()
     if provider_name == "resend" and api_key:
         return ResendEmailProvider()
