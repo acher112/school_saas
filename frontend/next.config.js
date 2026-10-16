@@ -16,6 +16,40 @@ const nextConfig = {
       },
     ];
   },
+  async redirects() {
+    return [
+      {
+        source: "/owner",
+        destination: "/admin",
+        permanent: false,
+      },
+      {
+        source: "/owner/:path*",
+        destination: "/admin/:path*",
+        permanent: false,
+      },
+      {
+        source: "/org_admin",
+        destination: "/admin",
+        permanent: false,
+      },
+      {
+        source: "/org_admin/:path*",
+        destination: "/admin/:path*",
+        permanent: false,
+      },
+      {
+        source: "/principal",
+        destination: "/headmaster",
+        permanent: false,
+      },
+      {
+        source: "/principal/:path*",
+        destination: "/headmaster/:path*",
+        permanent: false,
+      },
+    ];
+  },
 };
 
 module.exports = nextConfig;

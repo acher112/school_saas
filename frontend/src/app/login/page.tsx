@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { translations, Language } from "@/lib/translations";
-import { apiRequest, setAccessToken, setSchoolSlug, clearAllSessionData } from "@/lib/api";
+import { apiRequest, setAccessToken, setSchoolSlug, clearAllSessionData, getRoleDashboardPath } from "@/lib/api";
 
 interface SchoolOption {
   id: string;
@@ -116,9 +116,7 @@ export default function LoginPage() {
         setAuthSuccess(res);
         // If not requiring password change, auto-route to respective role dashboard
         if (!res.user?.must_change_password) {
-          const userRole = res.user?.role;
-          const isAdminRole = userRole === 'admin' || userRole === 'school_admin' || userRole === 'superadmin';
-          const dest = isAdminRole ? '/admin' : `/${userRole || 'dashboard'}`;
+          const dest = getRoleDashboardPath(res.user?.role);
           router.push(dest);
         }
       }
@@ -166,9 +164,7 @@ export default function LoginPage() {
         }
         setAuthSuccess(res);
         if (!res.user?.must_change_password) {
-          const userRole = res.user?.role;
-          const isAdminRole = userRole === 'admin' || userRole === 'school_admin' || userRole === 'superadmin';
-          const dest = isAdminRole ? '/admin' : `/${userRole || 'dashboard'}`;
+          const dest = getRoleDashboardPath(res.user?.role);
           router.push(dest);
         }
       }
@@ -265,9 +261,7 @@ export default function LoginPage() {
         }
         setAuthSuccess(res);
         if (!res.user?.must_change_password) {
-          const userRole = res.user?.role;
-          const isAdminRole = userRole === 'admin' || userRole === 'school_admin' || userRole === 'superadmin';
-          const dest = isAdminRole ? '/admin' : `/${userRole || 'dashboard'}`;
+          const dest = getRoleDashboardPath(res.user?.role);
           router.push(dest);
         }
       }

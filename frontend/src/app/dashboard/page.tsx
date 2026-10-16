@@ -45,10 +45,36 @@ export default function DashboardPage() {
       const userRes: any = await apiRequest("/api/v1/auth/me/");
       setUser(userRes.data);
 
-      // If user is admin/school_admin, cleanly route to the executive /admin dashboard
+      // Cleanly route each role to their dedicated portal
       const userRole = userRes.data?.role;
-      if (userRole === "admin" || userRole === "school_admin" || userRole === "superadmin") {
+      if (
+        userRole === "admin" ||
+        userRole === "school_admin" ||
+        userRole === "superadmin" ||
+        userRole === "owner" ||
+        userRole === "org_admin"
+      ) {
         router.replace("/admin");
+        return;
+      }
+      if (userRole === "principal" || userRole === "headmaster") {
+        router.replace("/headmaster");
+        return;
+      }
+      if (userRole === "teacher") {
+        router.replace("/teacher");
+        return;
+      }
+      if (userRole === "accountant") {
+        router.replace("/accountant");
+        return;
+      }
+      if (userRole === "student") {
+        router.replace("/student");
+        return;
+      }
+      if (userRole === "parent") {
+        router.replace("/parent");
         return;
       }
 

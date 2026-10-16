@@ -278,3 +278,32 @@ export async function loginUser(credentials: { username: string; password: strin
 
   return result;
 }
+
+/**
+ * Maps system user roles to their respective frontend destination paths.
+ * Enforces that institutional administrators and owners are seamlessly routed to /admin.
+ */
+export function getRoleDashboardPath(role?: string): string {
+  const r = (role || "").toLowerCase().trim();
+  switch (r) {
+    case "owner":
+    case "org_admin":
+    case "admin":
+    case "school_admin":
+    case "superadmin":
+      return "/admin";
+    case "principal":
+    case "headmaster":
+      return "/headmaster";
+    case "teacher":
+      return "/teacher";
+    case "accountant":
+      return "/accountant";
+    case "student":
+      return "/student";
+    case "parent":
+      return "/parent";
+    default:
+      return "/admin";
+  }
+}
