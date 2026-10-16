@@ -17,14 +17,19 @@ test('End-to-End Registration Wizard on /register', async ({ page }) => {
   await page.waitForSelector('text=Super-Administrator Account');
   await page.fill('input[name="admin_name"]', 'Director Asim');
   await page.fill('input[name="admin_username"]', `asim_${slug}`);
-  await page.fill('input[name="admin_email"]', `asim_${slug}@icg.edu.pk`);
+  await page.fill('input[name="admin_email"]', `asim_${slug}@gmail.com`);
   await page.fill('input[name="admin_password"]', 'SecurePass2026!');
   await page.fill('input[name="confirm_password"]', 'SecurePass2026!');
   await page.click('button[type="submit"]:has-text("Review Details")');
 
   // Step 3: Review & Launch
   await page.waitForSelector('text=Confirm School Setup');
-  await page.click('button:has-text("Launch My School Portal")');
+  await page.click('button:has-text("Send Confirmation Code")');
+
+  // Step 4: Email Verification
+  await page.waitForSelector('text=Enter Confirmation Code', { timeout: 15000 });
+  await page.waitForSelector('#dev-code-box', { timeout: 10000 });
+  await page.click('button[type="submit"]:has-text("Confirm & Launch School")');
 
   // Success Screen
   await page.waitForURL(/.*register\/success.*/, { timeout: 15000 });

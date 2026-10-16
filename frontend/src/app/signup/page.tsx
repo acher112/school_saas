@@ -279,7 +279,7 @@ export default function SignupWizardPage() {
                   className="flex-1 px-3.5 py-2.5 rounded-l-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs focus:ring-2 focus:ring-blue-500 outline-none"
                 />
                 <span className="px-3 py-2.5 bg-slate-100 dark:bg-slate-800 border-y border-r border-slate-300 dark:border-slate-700 rounded-r-xl text-xs text-slate-500">
-                  .schoolsaas.com
+                  .optimusorien.com
                 </span>
               </div>
               <div className="flex items-center gap-2 mt-1">
@@ -618,7 +618,7 @@ export default function SignupWizardPage() {
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">Subdomain:</span>
-                <span className="font-mono text-blue-600 font-semibold">{formData.slug}.schoolsaas.com</span>
+                <span className="font-mono text-blue-600 font-semibold">{formData.slug}.optimusorien.com</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">Admin Email:</span>

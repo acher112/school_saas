@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import * as path from 'path';
 
 test.describe('Visual Screenshots and Workflows Audit', () => {
-  const screenshotsDir = path.resolve(__dirname, '../../design/screenshots/after');
+  const screenshotsDir = path.resolve(__dirname, '../../../../design/screenshots/after');
 
   test('Capture Landing Page at 1280, 768, and 375 px', async ({ page }) => {
     // 1280px Desktop

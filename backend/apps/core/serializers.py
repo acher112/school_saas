@@ -20,10 +20,20 @@ from apps.authentication.models import User, UserRole
 from rest_framework_simplejwt.tokens import RefreshToken
 
 class CampusSerializer(serializers.ModelSerializer):
+    principal_name = serializers.CharField(source='primary_principal.get_full_name', read_only=True)
+    users_count = serializers.SerializerMethodField()
+
     class Meta:
         model = Campus
-        fields = ['id', 'name', 'code', 'address', 'is_main', 'created_at']
-        read_only_fields = ['id', 'created_at']
+        fields = [
+            'id', 'school_id', 'name', 'code', 'address', 'city', 'phone',
+            'latitude', 'longitude', 'is_main', 'is_active',
+            'primary_principal', 'principal_name', 'users_count', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'school_id', 'created_at', 'updated_at']
+
+    def get_users_count(self, obj):
+        return obj.assigned_users.count()
 
 class AcademicSessionSerializer(serializers.ModelSerializer):
     class Meta:
@@ -45,11 +55,14 @@ class SchoolRolePermissionSerializer(serializers.ModelSerializer):
             'id', 'school_id', 'role',
             'can_manage_academics', 'can_create_timetable',
             'can_mark_attendance', 'can_enter_marks',
-            'can_collect_fees', 'can_view_reports', 'can_manage_staff'
+            'can_collect_fees', 'can_view_reports', 'can_manage_staff',
+            'custom_overrides'
         ]
         read_only_fields = ['id', 'school_id']
 
 class AuditLogSerializer(serializers.ModelSerializer):
+    details = serializers.SerializerMethodField()
+
     class Meta:
         model = AuditLog
         fields = [
@@ -57,6 +70,17 @@ class AuditLogSerializer(serializers.ModelSerializer):
             'resource_type', 'resource_id', 'ip_address', 'details', 'created_at'
         ]
         read_only_fields = ['id', 'created_at']
+
+    def get_details(self, obj):
+        if not obj.details or not isinstance(obj.details, dict):
+            return obj.details or {}
+        sanitized = {}
+        for k, v in obj.details.items():
+            if any(s in k.lower() for s in ['password', 'secret', 'token', 'dev_code', 'credential']):
+                sanitized[k] = '[REDACTED]'
+            else:
+                sanitized[k] = v
+        return sanitized
 
 class SchoolSerializer(serializers.ModelSerializer):
     campuses = CampusSerializer(many=True, read_only=True)

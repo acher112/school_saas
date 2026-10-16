@@ -243,14 +243,18 @@ class SchoolSignupWizardView(APIView):
             "masked_email": mask_email(admin_email),
             "message": f"A 6-digit confirmation code has been dispatched to {mask_email(admin_email)}.{email_note}",
         }
+        # Security invariant: Never expose dev_code when EXPOSE_DEV_OTP is False or in production
+        if getattr(settings, 'EXPOSE_DEV_OTP', False) and (getattr(settings, 'DEBUG', False) or os.getenv('PYTEST_CURRENT_TEST')):
+            resp_data["dev_code"] = code
 
         return Response(resp_data, status=status.HTTP_201_CREATED)
 
     @classmethod
     def _provision_school(cls, payload: dict, client_ip: str = None):
-        """Atomically provisions a school tenant and initial resources."""
+        """Atomically provisions a school tenant, branches, and initial Owner account."""
         with transaction.atomic():
             school_status = "pending_approval" if getattr(settings, "SCHOOL_APPROVAL_REQUIRED", False) else "active"
+            has_multi = bool(payload.get('has_multiple_branches', False))
             school = School.objects.create(
                 name=payload['school_name'],
                 slug=payload['slug'],
@@ -268,6 +272,7 @@ class SchoolSignupWizardView(APIView):
                 brand_accent_color=payload.get('brand_accent_color', '#F59E0B'),
                 status=school_status,
                 is_active=True,
+                is_multi_branch=has_multi,
                 terms_version=payload.get('terms_version', 'v1.0'),
                 terms_accepted_at=timezone.now(),
             )
@@ -277,12 +282,42 @@ class SchoolSignupWizardView(APIView):
                     cursor.execute("SELECT set_config('app.current_school_id', %s, true);", [str(school.id)])
             set_current_school(school)
 
-            campus = Campus.objects.create(
-                school=school,
-                name="Main Campus",
-                code="MAIN",
-                is_main=True,
-            )
+            branches_data = payload.get('branches', [])
+            campuses_created = []
+
+            if has_multi and branches_data and isinstance(branches_data, list):
+                for idx, b in enumerate(branches_data):
+                    b_name = b.get('name', f"Branch {idx+1}").strip()
+                    b_code = (b.get('code') or f"BR{idx+1}").upper()
+                    c = Campus.objects.create(
+                        school=school,
+                        name=b_name,
+                        code=b_code,
+                        address=b.get('address', school.address),
+                        city=b.get('city', school.city),
+                        phone=b.get('phone', school.contact_phone),
+                        latitude=b.get('latitude'),
+                        longitude=b.get('longitude'),
+                        is_main=(idx == 0),
+                        is_active=True,
+                    )
+                    campuses_created.append(c)
+            else:
+                # Single branch default: Main Campus (or custom campus/branch name)
+                default_campus_name = payload.get('campus_name') or payload.get('branch_name') or "Main Campus"
+                c = Campus.objects.create(
+                    school=school,
+                    name=default_campus_name,
+                    code="MAIN",
+                    address=school.address,
+                    city=school.city,
+                    phone=school.contact_phone,
+                    is_main=True,
+                    is_active=True,
+                )
+                campuses_created.append(c)
+
+            main_campus = campuses_created[0]
 
             Domain.objects.create(
                 school=school,
@@ -292,26 +327,28 @@ class SchoolSignupWizardView(APIView):
 
             AcademicSession.objects.create(
                 school=school,
-                campus=campus,
+                campus=main_campus,
                 name=payload.get('academic_year_name', '2026-2027'),
                 start_date=payload.get('academic_year_start', '2026-08-01'),
                 end_date=payload.get('academic_year_end', '2027-06-30'),
                 is_current=True,
             )
 
-            SchoolRolePermission.initialize_for_school(school, campus)
+            SchoolRolePermission.initialize_for_school(school, main_campus)
 
             admin_user = User(
                 school=school,
+                primary_campus=main_campus,
                 username=payload.get('admin_username') or payload['admin_email'].split('@')[0],
                 email=payload['admin_email'],
                 first_name=payload.get('admin_name', 'Administrator'),
-                role=UserRole.SCHOOL_ADMIN,
+                role=UserRole.OWNER,
                 is_active=True,
                 must_change_password=False,
             )
             admin_user.password = payload['admin_password_hash']
             admin_user.save()
+            admin_user.assigned_campuses.set(campuses_created)
 
             AuditLog.objects.create(
                 school=school,
@@ -321,7 +358,13 @@ class SchoolSignupWizardView(APIView):
                 action="SCHOOL_ONBOARDED",
                 resource_type="School",
                 resource_id=str(school.id),
-                details={"school_name": school.name, "slug": school.slug, "ip": client_ip}
+                details={
+                    "school_name": school.name,
+                    "slug": school.slug,
+                    "is_multi_branch": has_multi,
+                    "campuses_count": len(campuses_created),
+                    "ip": client_ip,
+                }
             )
 
             return school, admin_user
@@ -393,9 +436,11 @@ class VerifyEmailCodeView(APIView):
         )
         email_provider.send_email(admin_user.email, subject, text_body)
 
+        from apps.authentication.views import set_refresh_cookie
+
         token = CustomTokenObtainPairSerializer.get_token(admin_user)
 
-        return Response({
+        response = Response({
             "success": True,
             "message": "Email verified successfully! School has been created.",
             "school": {
@@ -409,6 +454,9 @@ class VerifyEmailCodeView(APIView):
                 "refresh": str(token),
             }
         }, status=status.HTTP_200_OK)
+
+        set_refresh_cookie(response, str(token))
+        return response
 
 
 class ResendVerificationCodeView(APIView):
@@ -474,10 +522,14 @@ class ResendVerificationCodeView(APIView):
         elif not email_sent:
             email_note = " (Notice: Email delivery failed; check Gmail App Password)"
 
-        return Response({
+        resp_data = {
             "success": True,
             "message": f"A new verification code has been dispatched to your email.{email_note}",
-        }, status=status.HTTP_200_OK)
+        }
+        if settings.DEBUG or getattr(settings, 'TESTING', False):
+            resp_data["dev_code"] = code
+
+        return Response(resp_data, status=status.HTTP_200_OK)
 
 
 def delete_school_cascade(school):

@@ -6,8 +6,12 @@ from django.utils import timezone
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer, TokenRefreshSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
-from apps.authentication.models import User, UserLoginAttempt, ParentStudentRelation
-from apps.core.models import School
+import secrets
+import re
+from apps.authentication.models import (
+    User, UserLoginAttempt, ParentStudentRelation, UserRole, StudentProfile, StaffProfile
+)
+from apps.core.models import School, Campus
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     """
@@ -263,7 +267,11 @@ class UserSerializer(serializers.ModelSerializer):
     """Serializer for user profile representations."""
     school_name = serializers.CharField(source='school.name', read_only=True)
     school_slug = serializers.CharField(source='school.slug', read_only=True)
+    school_code = serializers.CharField(source='school.code', read_only=True)
+    primary_campus_name = serializers.CharField(source='primary_campus.name', read_only=True)
     children = serializers.SerializerMethodField()
+    admission_number = serializers.SerializerMethodField()
+    employee_id = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -271,10 +279,22 @@ class UserSerializer(serializers.ModelSerializer):
             'id', 'username', 'email', 'first_name', 'last_name',
             'role', 'phone_number', 'preferred_language', 'avatar',
             'is_active', 'must_change_password', 'token_version',
-            'school_id', 'school_name', 'school_slug', 'date_joined',
-            'children'
+            'school_id', 'school_name', 'school_slug', 'school_code',
+            'primary_campus_id', 'primary_campus_name',
+            'admission_number', 'employee_id',
+            'date_joined', 'children'
         ]
         read_only_fields = ['id', 'role', 'school_id', 'must_change_password', 'token_version']
+
+    def get_admission_number(self, obj):
+        if hasattr(obj, 'student_profile') and obj.student_profile:
+            return obj.student_profile.admission_number
+        return None
+
+    def get_employee_id(self, obj):
+        if hasattr(obj, 'staff_profile') and obj.staff_profile:
+            return obj.staff_profile.employee_id
+        return None
 
     def get_children(self, obj):
         if obj.role == 'parent':
@@ -286,6 +306,8 @@ class UserSerializer(serializers.ModelSerializer):
                     "first_name": rel.student.first_name,
                     "last_name": rel.student.last_name,
                     "relationship": rel.relationship,
+                    "is_primary": rel.is_primary,
+                    "receives_alerts": rel.receives_alerts,
                 }
                 for rel in relations
             ]
@@ -293,26 +315,143 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
-    """Serializer for school admins to create staff, teacher, and student users."""
+    """Serializer for owners, admins, and principals to provision user accounts."""
     role = serializers.ChoiceField(choices=[
-        ('headmaster', 'Headmaster / Principal'),
+        ('owner', 'Organization Owner'),
+        ('org_admin', 'Organization Admin'),
+        ('principal', 'Principal'),
+        ('headmaster', 'Principal (Legacy)'),
+        ('school_admin', 'Organization Admin (Legacy)'),
         ('teacher', 'Teacher'),
         ('accountant', 'Accountant / Finance'),
         ('student', 'Student'),
         ('parent', 'Parent / Guardian'),
     ])
+    username = serializers.CharField(required=False, allow_blank=True, default="")
     email = serializers.EmailField(required=False, allow_blank=True, default="")
     student_ids = serializers.ListField(child=serializers.UUIDField(), required=False, write_only=True)
+    primary_campus_id = serializers.UUIDField(required=False, allow_null=True)
+    assigned_campus_ids = serializers.ListField(child=serializers.UUIDField(), required=False, write_only=True)
+    student_id = serializers.CharField(required=False, allow_blank=True)
+    admission_number = serializers.CharField(required=False, allow_blank=True)
+    employee_id = serializers.CharField(required=False, allow_blank=True)
+    designation = serializers.CharField(required=False, allow_blank=True)
+    relationship = serializers.CharField(required=False, default="guardian")
+    is_primary = serializers.BooleanField(required=False, default=True)
+    receives_alerts = serializers.BooleanField(required=False, default=True)
 
     class Meta:
         model = User
-        fields = ['username', 'email', 'role', 'first_name', 'last_name', 'phone_number', 'student_ids']
+        fields = [
+            'username', 'email', 'role', 'first_name', 'last_name', 'phone_number',
+            'primary_campus_id', 'assigned_campus_ids', 'student_ids',
+            'student_id', 'admission_number', 'employee_id', 'designation',
+            'relationship', 'is_primary', 'receives_alerts'
+        ]
 
-    def validate_username(self, value):
-        username = value.strip()
+    def validate(self, attrs):
+        role = attrs.get('role')
+        if role == 'headmaster':
+            attrs['role'] = 'principal'
+            role = 'principal'
+        elif role == 'school_admin':
+            attrs['role'] = 'org_admin'
+            role = 'org_admin'
+
+        username = (attrs.get('username') or '').strip()
+        admission_number = (attrs.get('admission_number') or attrs.get('student_id') or '').strip()
+        school = self.context.get('school')
+
         if not username:
-            raise serializers.ValidationError("Username is required.")
-        return username
+            if role == 'student' and admission_number:
+                username = admission_number.lower()
+                attrs['username'] = username
+            elif role == 'student':
+                attrs['username'] = f"std_{secrets.token_hex(4)}"
+            elif attrs.get('email'):
+                email_prefix = attrs['email'].split('@')[0].lower()
+                base_username = re.sub(r'[^a-zA-Z0-9._]', '', email_prefix) or f"{role}_{secrets.token_hex(3)}"
+                candidate = base_username
+                idx = 1
+                while school and User.objects.filter(school=school, username__iexact=candidate).exists():
+                    candidate = f"{base_username}_{idx}"
+                    idx += 1
+                attrs['username'] = candidate
+            elif attrs.get('first_name'):
+                base = f"{attrs.get('first_name')}_{attrs.get('last_name', '')}".strip('_').lower()
+                base_username = re.sub(r'[^a-zA-Z0-9._]', '', base) or f"{role}_{secrets.token_hex(3)}"
+                candidate = base_username
+                idx = 1
+                while school and User.objects.filter(school=school, username__iexact=candidate).exists():
+                    candidate = f"{base_username}_{idx}"
+                    idx += 1
+                attrs['username'] = candidate
+            else:
+                raise serializers.ValidationError({"username": "Username is required for staff and parent accounts."})
+
+        if school and attrs.get('username'):
+            if User.objects.filter(school=school, username__iexact=attrs['username']).exists():
+                raise serializers.ValidationError({"username": f"A user with username '{attrs['username']}' already exists in this school."})
+
+        return attrs
+
+    def create(self, validated_data):
+        primary_campus_id = validated_data.pop('primary_campus_id', None)
+        assigned_campus_ids = validated_data.pop('assigned_campus_ids', [])
+        student_ids = validated_data.pop('student_ids', [])
+        student_id_val = validated_data.pop('student_id', None)
+        admission_number = validated_data.pop('admission_number', None)
+        employee_id = validated_data.pop('employee_id', None)
+        designation = validated_data.pop('designation', None)
+        relationship = validated_data.pop('relationship', 'guardian')
+        is_primary = validated_data.pop('is_primary', True)
+        receives_alerts = validated_data.pop('receives_alerts', True)
+
+        school = validated_data.get('school') or self.context.get('school')
+        validated_data['school'] = school
+
+        if primary_campus_id:
+            campus = Campus.objects.filter(id=primary_campus_id, school=school).first()
+            if campus:
+                validated_data['primary_campus'] = campus
+
+        user = User.objects.create(**validated_data)
+
+        if assigned_campus_ids:
+            campuses = Campus.objects.filter(id__in=assigned_campus_ids, school=school)
+            user.assigned_campuses.set(campuses)
+
+        # Create linked profiles
+        if user.role == UserRole.STUDENT:
+            adm_no = admission_number or student_id_val or user.username
+            StudentProfile.objects.create(
+                school=school,
+                user=user,
+                admission_number=adm_no,
+            )
+        elif user.role in [UserRole.TEACHER, UserRole.PRINCIPAL, UserRole.ACCOUNTANT]:
+            emp_no = employee_id or user.username
+            StaffProfile.objects.create(
+                school=school,
+                user=user,
+                employee_id=emp_no,
+                designation=designation or user.role.title(),
+            )
+        elif user.role == UserRole.PARENT and student_ids:
+            for sid in student_ids:
+                student = User.objects.filter(id=sid, school=school, role=UserRole.STUDENT).first()
+                if student:
+                    ParentStudentRelation.objects.get_or_create(
+                        school=school,
+                        parent=user,
+                        student=student,
+                        defaults={
+                            'relationship': relationship,
+                            'is_primary': is_primary,
+                            'receives_alerts': receives_alerts
+                        }
+                    )
+        return user
 
 
 class ChangePasswordSerializer(serializers.Serializer):

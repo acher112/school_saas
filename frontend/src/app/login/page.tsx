@@ -36,6 +36,7 @@ export default function LoginPage() {
   const [otpCode, setOtpCode] = useState("");
   const [otpLoading, setOtpLoading] = useState(false);
   const [otpError, setOtpError] = useState("");
+  const [otpDevCode, setOtpDevCode] = useState("");
   const [otpResendCooldown, setOtpResendCooldown] = useState(0);
 
   useEffect(() => {
@@ -94,7 +95,13 @@ export default function LoginPage() {
         setOtpSessionId(res.session_id);
         setMaskedEmail(res.masked_email || "your registered email");
         setShowOtpScreen(true);
-        setOtpCode("");
+        if (res.dev_code) {
+          setOtpDevCode(res.dev_code);
+          setOtpCode(res.dev_code);
+        } else {
+          setOtpDevCode("");
+          setOtpCode("");
+        }
         setOtpError("");
         setOtpResendCooldown(60);
         return;
@@ -181,6 +188,10 @@ export default function LoginPage() {
         method: 'POST',
         body: JSON.stringify({ session_id: otpSessionId }),
       });
+      if (res.dev_code) {
+        setOtpDevCode(res.dev_code);
+        setOtpCode(res.dev_code);
+      }
       setOtpResendCooldown(60);
     } catch (err: any) {
       setOtpError(err.message || "Failed to resend confirmation code.");
@@ -354,6 +365,20 @@ export default function LoginPage() {
             {otpError && (
               <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-400 text-xs text-center">
                 ⚠️ {otpError}
+              </div>
+            )}
+
+            {otpDevCode && (
+              <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs text-center space-y-1">
+                <div className="font-bold flex items-center justify-center gap-1.5 text-amber-400">
+                  <span>⚡ Development Mode Code</span>
+                </div>
+                <div className="font-mono text-base font-bold text-amber-200 tracking-wider">
+                  {otpDevCode}
+                </div>
+                <p className="text-[11px] text-amber-400/80">
+                  (SMTP not configured on local machine; code auto-filled for quick testing)
+                </p>
               </div>
             )}
 

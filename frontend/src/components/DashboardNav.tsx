@@ -63,7 +63,7 @@ export function DashboardNav({
               <div className="font-extrabold text-sm leading-tight text-slate-900 dark:text-white flex items-center gap-1.5">
                 <span>{schoolName}</span>
                 <span className="text-[10px] font-mono font-medium px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500">
-                  {schoolSlug}.myschoolsaas.com
+                  {schoolSlug}.portal.optimusorien.com
                 </span>
               </div>
               <div className="text-[11px] text-slate-400 capitalize">

@@ -15,4 +15,10 @@ urlpatterns = [
 
     # Authentication & JWT Endpoints
     path('api/v1/auth/', include('apps.authentication.urls')),
+
+    # Academics, Grading, Attendance, Tasks, Behaviour, Skills, & AQI Engine
+    path('api/v1/academics/', include('apps.academics.urls')),
+
+    # Finance, Invoicing, Fee Challan PDF, General Ledger & Gateways
+    path('api/v1/finance/', include('apps.finance.urls')),
 ]

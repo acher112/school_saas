@@ -24,7 +24,7 @@ def test_seed_demo_command():
     assert school_lgc.campuses.count() >= 1
     assert AcademicSession.all_objects.filter(school=school_lgc).count() >= 1
     assert SchoolRolePermission.all_objects.filter(school=school_lgc).count() >= 6
-    assert User.objects.filter(school=school_lgc, role='school_admin').exists()
+    assert User.objects.filter(school=school_lgc, role__in=['school_admin', 'org_admin', 'owner']).exists()
 
     # Test re-running doesn't duplicate or fail
     call_command('seed_demo', stdout=out)

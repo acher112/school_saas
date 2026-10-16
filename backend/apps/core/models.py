@@ -58,6 +58,20 @@ class School(models.Model):
     terms_version = models.CharField(max_length=32, default="v1.0")
     terms_accepted_at = models.DateTimeField(null=True, blank=True)
 
+    # Configurable Institutional Policy Toggles
+    enable_bform_collection = models.BooleanField(
+        default=False,
+        help_text="Whether collection of encrypted B-Form / CNIC is enabled for this school (off by default)."
+    )
+    enable_public_merit_leaderboard = models.BooleanField(
+        default=False,
+        help_text="Whether public merit leaderboard is enabled (Phase 2, Spec 30; off by default)."
+    )
+    is_multi_branch = models.BooleanField(
+        default=False,
+        help_text="Whether this school organization operates multiple branches/campuses."
+    )
+
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -66,20 +80,36 @@ class School(models.Model):
         verbose_name = 'School'
         verbose_name_plural = 'Schools'
 
+    @property
+    def code(self):
+        return self.slug.upper()
+
     def __str__(self):
         return f"{self.name} ({self.slug})"
 
 class Campus(models.Model):
     """
     Physical branch or campus belonging to a school.
-    One campus per school in MVP UI, but architecture supports multi-campus from day one.
+    Campuses are soft-deactivated (is_active=False), never deleted.
     """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     school = models.ForeignKey(School, on_delete=models.CASCADE, related_name="campuses", db_index=True)
     name = models.CharField(max_length=255, default="Main Campus")
     code = models.CharField(max_length=32, default="MAIN")
     address = models.TextField(blank=True, default="")
+    city = models.CharField(max_length=100, blank=True, default="Lahore")
+    phone = models.CharField(max_length=32, blank=True, default="")
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     is_main = models.BooleanField(default=True)
+    is_active = models.BooleanField(default=True, db_index=True)
+    primary_principal = models.ForeignKey(
+        'authentication.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="principal_campuses"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -89,7 +119,8 @@ class Campus(models.Model):
         verbose_name_plural = 'Campuses'
 
     def __str__(self):
-        return f"{self.school.name} - {self.name}"
+        active_str = "" if self.is_active else " (Inactive)"
+        return f"{self.school.name} - {self.name}{active_str}"
 
 class Domain(models.Model):
     """
@@ -163,10 +194,10 @@ class TenantQuerySet(models.QuerySet):
         return self._execute_with_tenant_scope(super().exists)
 
     def aggregate(self, *args, **kwargs):
-        return self._execute_with_tenant_scope(lambda: super().aggregate(*args, **kwargs))
+        return self._execute_with_tenant_scope(lambda: super(TenantQuerySet, self).aggregate(*args, **kwargs))
 
     def iterator(self, *args, **kwargs):
-        return self._execute_with_tenant_scope(lambda: list(super().iterator(*args, **kwargs)))
+        return self._execute_with_tenant_scope(lambda: list(super(TenantQuerySet, self).iterator(*args, **kwargs)))
 
 class TenantManager(models.Manager.from_queryset(TenantQuerySet)):
     """
@@ -343,6 +374,11 @@ class SchoolRolePermission(BaseTenantModel):
     can_collect_fees = models.BooleanField(default=False)
     can_view_reports = models.BooleanField(default=False)
     can_manage_staff = models.BooleanField(default=False)
+    custom_overrides = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Fine-grained capability overrides {capability_key: bool} within role ceiling."
+    )
 
     @classmethod
     def initialize_for_school(cls, school, campus=None):
@@ -350,7 +386,9 @@ class SchoolRolePermission(BaseTenantModel):
             campus = school.campuses.filter(is_main=True).first()
         from apps.authentication.models import UserRole
         default_permissions = [
-            (UserRole.HEADMASTER, True, True, True, True, True, True, True),
+            (UserRole.OWNER, True, True, True, True, True, True, True),
+            (UserRole.ORG_ADMIN, True, True, True, True, True, True, True),
+            (UserRole.PRINCIPAL, True, True, True, True, True, True, True),
             (UserRole.TEACHER, False, False, True, True, False, False, False),
             (UserRole.ACCOUNTANT, False, False, False, False, True, True, False),
             (UserRole.STUDENT, False, False, False, False, False, False, False),

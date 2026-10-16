@@ -6,7 +6,36 @@ const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
 let _inMemoryAccessToken: string | null = null;
 let _inMemorySchoolSlug: string | null = null;
-let _isRefreshing = false;
+let _refreshPromise: Promise<string | null> | null = null;
+
+async function doSilentRefresh(): Promise<string | null> {
+  if (_refreshPromise) {
+    return _refreshPromise;
+  }
+  _refreshPromise = (async () => {
+    try {
+      const refreshRes = await fetch(`${API_BASE_URL}/api/v1/auth/refresh/`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      if (refreshRes.ok) {
+        const refreshData = await refreshRes.json();
+        if (refreshData.access) {
+          setAccessToken(refreshData.access);
+          return refreshData.access as string;
+        }
+      }
+      return null;
+    } catch {
+      return null;
+    } finally {
+      _refreshPromise = null;
+    }
+  })();
+  return _refreshPromise;
+}
 
 /**
  * Completely purges all session state, in-memory tokens, cached keys, and storage.
@@ -15,16 +44,19 @@ let _isRefreshing = false;
 export function clearAllSessionData() {
   _inMemoryAccessToken = null;
   _inMemorySchoolSlug = null;
+  _refreshPromise = null;
   if (typeof window !== 'undefined') {
     try {
       sessionStorage.removeItem('school_access_token');
       sessionStorage.removeItem('school_tenant_slug');
       sessionStorage.removeItem('current_user_profile');
+      sessionStorage.removeItem('just_registered_school');
       // Purge any remaining session storage keys
       sessionStorage.clear();
       // Purge local storage
       localStorage.removeItem('school_tenant_slug');
       localStorage.removeItem('school_access_token');
+      localStorage.removeItem('just_registered_school');
     } catch (e) {
       console.warn('Storage purge warning:', e);
     }
@@ -33,48 +65,18 @@ export function clearAllSessionData() {
 
 export function setAccessToken(token: string | null) {
   _inMemoryAccessToken = token;
-  if (typeof window !== 'undefined') {
-    if (token) {
-      sessionStorage.setItem('school_access_token', token);
-    } else {
-      sessionStorage.removeItem('school_access_token');
-    }
-  }
 }
 
 export function getAccessToken(): string | null {
-  if (_inMemoryAccessToken) return _inMemoryAccessToken;
-  if (typeof window !== 'undefined') {
-    const stored = sessionStorage.getItem('school_access_token');
-    if (stored) {
-      _inMemoryAccessToken = stored;
-      return stored;
-    }
-  }
-  return null;
+  return _inMemoryAccessToken;
 }
 
 export function setSchoolSlug(slug: string | null) {
   _inMemorySchoolSlug = slug;
-  if (typeof window !== 'undefined') {
-    if (slug) {
-      sessionStorage.setItem('school_tenant_slug', slug);
-    } else {
-      sessionStorage.removeItem('school_tenant_slug');
-    }
-  }
 }
 
 export function getSchoolSlug(): string | null {
-  if (_inMemorySchoolSlug) return _inMemorySchoolSlug;
-  if (typeof window !== 'undefined') {
-    const stored = sessionStorage.getItem('school_tenant_slug');
-    if (stored) {
-      _inMemorySchoolSlug = stored;
-      return stored;
-    }
-  }
-  return null;
+  return _inMemorySchoolSlug;
 }
 
 export interface LoginResponse {
@@ -137,33 +139,10 @@ export async function apiRequest<T>(
 
   // Handle 401 Unauthorized with silent refresh
   if (response.status === 401 && retryCount === 0 && !endpoint.includes('/auth/login') && !endpoint.includes('/auth/refresh') && !endpoint.includes('/signup/')) {
-    if (!_isRefreshing) {
-      _isRefreshing = true;
-      try {
-        const refreshRes = await fetch(`${API_BASE_URL}/api/v1/auth/refresh/`, {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({}),
-        });
-
-        if (refreshRes.ok) {
-          const refreshData = await refreshRes.json();
-          if (refreshData.access) {
-            setAccessToken(refreshData.access);
-            _isRefreshing = false;
-            // Retry the original request once
-            return apiRequest<T>(endpoint, options, schoolSlug, retryCount + 1);
-          }
-        }
-      } catch (refreshErr) {
-        // Refresh failed
-      } finally {
-        _isRefreshing = false;
-      }
+    const newAccessToken = await doSilentRefresh();
+    if (newAccessToken) {
+      return apiRequest<T>(endpoint, options, schoolSlug, retryCount + 1);
     }
-
-    // Refresh failed or not possible -> purge session cleanly and hard navigate to login
     clearAllSessionData();
     if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login') && !window.location.pathname.startsWith('/signup') && !window.location.pathname.startsWith('/register')) {
       window.location.href = '/login';

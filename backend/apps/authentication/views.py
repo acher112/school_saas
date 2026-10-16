@@ -16,9 +16,11 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 
+from django.db.models import Q
 from apps.authentication.models import User, UserRole, ParentStudentRelation, LoginOTPChallenge
 from apps.core.models import School, AuditLog, PasswordResetToken
 from apps.core.permissions import IsTenantMember, IsSchoolAdmin
+from apps.core.policy import can_create_role, ROLE_RANKS, has_capability
 from apps.core.email import get_email_provider
 from apps.core.email_validator import mask_email
 from apps.authentication.google import verify_google_id_token
@@ -155,6 +157,8 @@ class LoginView(APIView):
                     "masked_email": mask_email(authenticated_user.email),
                     "message": f"A 6-digit confirmation code has been sent to your registered email ({mask_email(authenticated_user.email)}).{email_note}",
                 }
+                if getattr(settings, 'EXPOSE_DEV_OTP', False) or getattr(settings, 'DEBUG', False):
+                    resp_data["dev_code"] = code
 
                 return Response(resp_data, status=status.HTTP_200_OK)
             except Exception as exc:
@@ -343,10 +347,14 @@ class ResendLoginOTPView(APIView):
         elif not email_sent:
             email_note = " (Notice: Email delivery failed; check Gmail App Password)"
 
-        return Response({
+        resp_data = {
             "success": True,
             "message": f"A new confirmation code has been sent to {mask_email(user.email)}.{email_note}",
-        }, status=status.HTTP_200_OK)
+        }
+        if getattr(settings, 'EXPOSE_DEV_OTP', False) or getattr(settings, 'DEBUG', False):
+            resp_data["dev_code"] = code
+
+        return Response(resp_data, status=status.HTTP_200_OK)
 
 
 class GoogleLoginView(APIView):
@@ -657,19 +665,72 @@ class UserProfileView(APIView):
 class UserManagementView(APIView):
     """
     Tenant-Scoped User Management:
-    GET: List all users belonging to the administrator's school.
-    POST: Admin creates a user with a generated temporary password, optional parent-student links,
-          and enforces must_change_password.
-          The temporary password is returned in the response ONCE.
+    GET: List users belonging to the administrator's school with role, campus, and search filters.
+         Enforces campus isolation for Principals.
+    POST: Provisions user account according to role hierarchy ceilings and campus assignments.
+          Generates temporary password, enforces must_change_password, and returns one-time credential slip.
     """
     permission_classes = [IsAuthenticated, IsTenantMember, IsSchoolAdmin]
 
     def get(self, request):
         school = getattr(request, 'school', None) or getattr(request.user, 'school', None)
-        users = User.objects.filter(school=school).order_by('role', 'username')
+        if not school:
+            return Response({"success": False, "message": "School tenant context required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        queryset = User.objects.filter(school=school).select_related('primary_campus', 'school').prefetch_related('assigned_campuses')
+
+        # Campus isolation and filtering
+        campus_id = request.query_params.get('campus') or request.query_params.get('campus_id')
+        if request.user.role == UserRole.PRINCIPAL:
+            principal_campus_id = str(request.user.primary_campus_id) if request.user.primary_campus_id else None
+            if campus_id and str(campus_id) != principal_campus_id:
+                return Response({
+                    "success": False,
+                    "message": "Access denied: Principal cannot access users from another campus."
+                }, status=status.HTTP_403_FORBIDDEN)
+            if principal_campus_id:
+                queryset = queryset.filter(
+                    Q(primary_campus_id=principal_campus_id) | Q(assigned_campuses__id=principal_campus_id)
+                ).distinct()
+        elif campus_id:
+            queryset = queryset.filter(
+                Q(primary_campus_id=campus_id) | Q(assigned_campuses__id=campus_id)
+            ).distinct()
+
+        # Role filtering
+        role = request.query_params.get('role')
+        if role:
+            if role == 'admin':
+                queryset = queryset.filter(role__in=[UserRole.OWNER, UserRole.ORG_ADMIN])
+            elif role == 'staff':
+                queryset = queryset.filter(role__in=[UserRole.PRINCIPAL, UserRole.TEACHER, UserRole.ACCOUNTANT])
+            else:
+                queryset = queryset.filter(role=role)
+
+        # Active status filtering
+        is_active = request.query_params.get('is_active')
+        if is_active is not None:
+            if is_active.lower() in ['true', '1']:
+                queryset = queryset.filter(is_active=True)
+            elif is_active.lower() in ['false', '0']:
+                queryset = queryset.filter(is_active=False)
+
+        # Search query
+        search = request.query_params.get('search', '').strip()
+        if search:
+            queryset = queryset.filter(
+                Q(username__icontains=search) |
+                Q(first_name__icontains=search) |
+                Q(last_name__icontains=search) |
+                Q(email__icontains=search) |
+                Q(phone_number__icontains=search)
+            ).distinct()
+
+        users = queryset.order_by('role', 'username')
         serializer = UserSerializer(users, many=True)
         return Response({
             "success": True,
+            "count": users.count(),
             "data": serializer.data
         })
 
@@ -678,12 +739,39 @@ class UserManagementView(APIView):
         if not school:
             return Response({"success": False, "message": "School tenant context required."}, status=status.HTTP_400_BAD_REQUEST)
 
-        serializer = UserCreateSerializer(data=request.data)
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        target_role = data.get('role', UserRole.STUDENT)
+        if target_role == 'headmaster':
+            target_role = UserRole.PRINCIPAL
+            data['role'] = UserRole.PRINCIPAL
+        elif target_role == 'school_admin':
+            target_role = UserRole.ORG_ADMIN
+            data['role'] = UserRole.ORG_ADMIN
+
+        # 1. Role hierarchy creation ceiling check
+        if not can_create_role(request.user.role, target_role):
+            return Response({
+                "success": False,
+                "message": f"Permission denied: A user with role '{request.user.role}' cannot create a user with role '{target_role}'."
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        # 2. Campus isolation check for Principal
+        target_campus_id = data.get('primary_campus_id') or data.get('primary_campus')
+        if request.user.role == UserRole.PRINCIPAL:
+            principal_campus_id = str(request.user.primary_campus_id) if request.user.primary_campus_id else None
+            if target_campus_id and str(target_campus_id) != principal_campus_id:
+                return Response({
+                    "success": False,
+                    "message": "Permission denied: Principals can only create users within their assigned campus."
+                }, status=status.HTTP_403_FORBIDDEN)
+            if not target_campus_id and principal_campus_id:
+                data['primary_campus_id'] = principal_campus_id
+
+        serializer = UserCreateSerializer(data=data, context={'school': school, 'request': request})
         if not serializer.is_valid():
             return Response({"success": False, "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
-        student_ids = serializer.validated_data.pop('student_ids', [])
-        temp_password = f"Temp-{secrets.token_urlsafe(8)}!"
+        temp_password = f"Temp-{secrets.token_urlsafe(6)}!9"
 
         with transaction.atomic():
             user = serializer.save(
@@ -694,17 +782,6 @@ class UserManagementView(APIView):
             user.set_password(temp_password)
             user.save()
 
-            # Handle parent-student links if parent role
-            if user.role == UserRole.PARENT and student_ids:
-                for sid in student_ids:
-                    student = User.objects.filter(id=sid, school=school, role=UserRole.STUDENT).first()
-                    if student:
-                        ParentStudentRelation.objects.get_or_create(
-                            school=school,
-                            parent=user,
-                            student=student,
-                        )
-
             AuditLog.objects.create(
                 school=school,
                 actor=request.user,
@@ -713,82 +790,175 @@ class UserManagementView(APIView):
                 action="USER_CREATED",
                 resource_type="User",
                 resource_id=str(user.id),
-                details={"username": user.username, "role": user.role}
+                details={
+                    "username": user.username,
+                    "role": user.role,
+                    "campus_id": str(user.primary_campus_id) if user.primary_campus_id else None
+                }
             )
+
+        credential_slip = {
+            "school_name": school.name,
+            "school_code": school.code,
+            "username": user.username,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "role": user.role,
+            "temporary_password": temp_password,
+            "login_url": f"/login?school={school.code}",
+            "must_change_password": True,
+            "generated_at": timezone.now().isoformat(),
+        }
 
         return Response({
             "success": True,
-            "message": f"User '{user.username}' created successfully. Provide the temporary password to the user.",
+            "message": f"User '{user.username}' created successfully. Provide the one-time credential slip to the user.",
             "data": UserSerializer(user).data,
-            "temporary_password": temp_password
+            "temporary_password": temp_password,
+            "credential_slip": credential_slip
         }, status=status.HTTP_201_CREATED)
 
 
 class AdminResetUserPasswordView(APIView):
     """
     Tenant-Scoped Password Reset:
-    Admin resets a user's password, generating a new temporary password and setting must_change_password=True.
-    The new temporary password is returned ONCE.
+    Owner/Admin, Principal, or Parent resets a user's password within authorized scope.
+    Generates a new temporary password, invalidates active sessions, and logs to AuditLog.
     """
-    permission_classes = [IsAuthenticated, IsTenantMember, IsSchoolAdmin]
+    permission_classes = [IsAuthenticated, IsTenantMember]
 
     def post(self, request, pk):
         school = getattr(request, 'school', None) or getattr(request.user, 'school', None)
-        user = User.objects.filter(pk=pk, school=school).first()
-        if not user:
+        target_user = User.objects.filter(pk=pk, school=school).first()
+        if not target_user:
             return Response({"success": False, "message": "User not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        temp_password = f"Reset-{secrets.token_urlsafe(8)}!"
-        user.set_password(temp_password)
-        user.must_change_password = True
-        user.temporary_password_created_at = timezone.now()
-        user.token_version += 1  # Invalidate current active sessions
-        user.save()
+        actor = request.user
+        actor_role = actor.role
+        target_role = target_user.role
+
+        # Hierarchy & Scope Checks
+        if actor_role == UserRole.PARENT:
+            linked = ParentStudentRelation.objects.filter(school=school, parent=actor, student=target_user).exists()
+            if not linked:
+                return Response({
+                    "success": False,
+                    "message": "Permission denied: You can only reset passwords for your linked student."
+                }, status=status.HTTP_403_FORBIDDEN)
+        elif actor_role == UserRole.PRINCIPAL:
+            if target_role not in [UserRole.TEACHER, UserRole.STUDENT, UserRole.PARENT]:
+                return Response({
+                    "success": False,
+                    "message": "Permission denied: Principals cannot reset administrator or principal passwords."
+                }, status=status.HTTP_403_FORBIDDEN)
+            if target_user.primary_campus_id and actor.primary_campus_id and target_user.primary_campus_id != actor.primary_campus_id:
+                return Response({
+                    "success": False,
+                    "message": "Permission denied: Principals can only reset passwords for users in their assigned campus."
+                }, status=status.HTTP_403_FORBIDDEN)
+        elif actor_role in [UserRole.OWNER, UserRole.ORG_ADMIN]:
+            if actor_role == UserRole.ORG_ADMIN and target_role == UserRole.OWNER and actor.id != target_user.id:
+                return Response({
+                    "success": False,
+                    "message": "Permission denied: Organization admins cannot reset Owner passwords."
+                }, status=status.HTTP_403_FORBIDDEN)
+        elif actor.is_superuser:
+            pass
+        else:
+            return Response({
+                "success": False,
+                "message": "Permission denied: You do not have permission to reset user passwords."
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        temp_password = f"Reset-{secrets.token_urlsafe(6)}!9"
+        target_user.set_password(temp_password)
+        target_user.must_change_password = True
+        target_user.temporary_password_created_at = timezone.now()
+        target_user.token_version += 1  # Invalidate current active sessions
+        target_user.save()
 
         AuditLog.objects.create(
             school=school,
-            actor=request.user,
-            actor_username=request.user.username,
-            actor_role=request.user.role,
+            actor=actor,
+            actor_username=actor.username,
+            actor_role=actor.role,
             action="USER_PASSWORD_RESET",
             resource_type="User",
-            resource_id=str(user.id),
-            details={"username": user.username}
+            resource_id=str(target_user.id),
+            details={"username": target_user.username, "target_role": target_user.role}
         )
+
+        credential_slip = {
+            "school_name": school.name,
+            "school_code": school.code,
+            "username": target_user.username,
+            "role": target_user.role,
+            "temporary_password": temp_password,
+            "login_url": f"/login?school={school.code}",
+            "must_change_password": True,
+            "generated_at": timezone.now().isoformat(),
+        }
 
         return Response({
             "success": True,
-            "message": f"Password for '{user.username}' has been reset.",
-            "temporary_password": temp_password
+            "message": f"Password for '{target_user.username}' has been reset.",
+            "temporary_password": temp_password,
+            "credential_slip": credential_slip
         })
 
 
 class UserDeactivateView(APIView):
     """
     Tenant-Scoped User Deactivation / Activation:
-    POST /api/v1/auth/users/<pk>/deactivate/: Sets is_active=False and increments token_version to boot user out.
+    POST /api/v1/auth/users/<pk>/deactivate/: Sets is_active=False and increments token_version.
     POST /api/v1/auth/users/<pk>/activate/: Sets is_active=True.
+    Enforces Sole-Owner Protection and Role Rank Hierarchy.
     """
     permission_classes = [IsAuthenticated, IsTenantMember, IsSchoolAdmin]
 
     def post(self, request, pk, action='deactivate'):
         school = getattr(request, 'school', None) or getattr(request.user, 'school', None)
-        user = User.objects.filter(pk=pk, school=school).first()
-        if not user:
+        target_user = User.objects.filter(pk=pk, school=school).first()
+        if not target_user:
             return Response({"success": False, "message": "User not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        if user.id == request.user.id:
+        if target_user.id == request.user.id:
             return Response({"success": False, "message": "You cannot deactivate your own account."}, status=status.HTTP_400_BAD_REQUEST)
 
+        # 1. Sole owner protection
+        if action == 'deactivate' and target_user.is_sole_owner():
+            return Response({
+                "success": False,
+                "message": "Security violation: Cannot deactivate the sole organization owner."
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # 2. Hierarchy rank check
+        creator_rank = ROLE_RANKS.get(request.user.role, 0)
+        target_rank = ROLE_RANKS.get(target_user.role, 0)
+        if request.user.role != UserRole.OWNER and not request.user.is_superuser:
+            if creator_rank <= target_rank:
+                return Response({
+                    "success": False,
+                    "message": f"Permission denied: Cannot {action} user with rank equal to or higher than your own."
+                }, status=status.HTTP_403_FORBIDDEN)
+
+        # 3. Principal campus isolation
+        if request.user.role == UserRole.PRINCIPAL:
+            if target_user.primary_campus_id and request.user.primary_campus_id and target_user.primary_campus_id != request.user.primary_campus_id:
+                return Response({
+                    "success": False,
+                    "message": f"Permission denied: Principal cannot {action} users from another campus."
+                }, status=status.HTTP_403_FORBIDDEN)
+
         if action == 'deactivate':
-            user.is_active = False
-            user.token_version += 1  # Invalidate active JWTs immediately
-            user.save(update_fields=['is_active', 'token_version'])
-            msg = f"User '{user.username}' deactivated and logged out of all devices."
+            target_user.is_active = False
+            target_user.token_version += 1  # Invalidate active JWTs immediately
+            target_user.save(update_fields=['is_active', 'token_version'])
+            msg = f"User '{target_user.username}' deactivated and logged out of all devices."
         else:
-            user.is_active = True
-            user.save(update_fields=['is_active'])
-            msg = f"User '{user.username}' reactivated."
+            target_user.is_active = True
+            target_user.save(update_fields=['is_active'])
+            msg = f"User '{target_user.username}' reactivated."
 
         AuditLog.objects.create(
             school=school,
@@ -797,11 +967,62 @@ class UserDeactivateView(APIView):
             actor_role=request.user.role,
             action=f"USER_{action.upper()}",
             resource_type="User",
-            resource_id=str(user.id),
-            details={"username": user.username}
+            resource_id=str(target_user.id),
+            details={"username": target_user.username}
         )
 
-        return Response({"success": True, "message": msg, "data": UserSerializer(user).data})
+        return Response({"success": True, "message": msg, "data": UserSerializer(target_user).data})
+
+
+class UserCredentialSheetView(APIView):
+    """
+    Batch Credential Sheet Generation:
+    Allows administrators to download or display one-time credential slips for students/staff.
+    """
+    permission_classes = [IsAuthenticated, IsTenantMember, IsSchoolAdmin]
+
+    def get(self, request):
+        school = getattr(request, 'school', None) or getattr(request.user, 'school', None)
+        users = User.objects.filter(school=school)
+
+        campus_id = request.query_params.get('campus_id')
+        if request.user.role == UserRole.PRINCIPAL:
+            if request.user.primary_campus_id:
+                users = users.filter(primary_campus_id=request.user.primary_campus_id)
+        elif campus_id:
+            users = users.filter(primary_campus_id=campus_id)
+
+        role = request.query_params.get('role')
+        if role:
+            users = users.filter(role=role)
+
+        user_ids = request.query_params.get('user_ids')
+        if user_ids:
+            ids = [i.strip() for i in user_ids.split(',') if i.strip()]
+            users = users.filter(id__in=ids)
+
+        slips = [
+            {
+                "id": str(u.id),
+                "username": u.username,
+                "first_name": u.first_name,
+                "last_name": u.last_name,
+                "role": u.role,
+                "school_name": school.name,
+                "school_code": school.code,
+                "primary_campus": u.primary_campus.name if u.primary_campus else "Main Branch",
+                "must_change_password": u.must_change_password,
+                "login_url": f"/login?school={school.code}",
+            }
+            for u in users.select_related('primary_campus')[:200]
+        ]
+
+        return Response({
+            "success": True,
+            "school_code": school.code,
+            "count": len(slips),
+            "slips": slips
+        })
 
 
 class UserForceLogoutView(APIView):
@@ -834,6 +1055,87 @@ class UserForceLogoutView(APIView):
         return Response({
             "success": True,
             "message": f"All active sessions for '{user.username}' have been invalidated."
+        })
+
+
+class UserRoleChangeView(APIView):
+    """
+    Tenant-Scoped User Role Modification:
+    Enforces Strict Rank Hierarchy, Sole-Owner Protection, Token Invalidation, and Audit Trail.
+    1. Actor must be Owner (100) or Org Admin (80).
+    2. Target user cannot be Sole Owner.
+    3. Actor rank must be STRICTLY GREATER than target user's CURRENT rank (cannot change peer or superior).
+    4. Actor rank must be STRICTLY GREATER than target user's NEW rank (cannot promote to peer or superior, unless Owner).
+    5. Invalidate target user's active sessions (token_version += 1).
+    6. Record immutable AuditLog entry.
+    """
+    permission_classes = [IsAuthenticated, IsTenantMember, IsSchoolAdmin]
+
+    def post(self, request, pk):
+        school = getattr(request, 'school', None) or getattr(request.user, 'school', None)
+        target_user = User.objects.filter(pk=pk, school=school).first()
+        if not target_user:
+            return Response({"success": False, "message": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        new_role = request.data.get('role')
+        if not new_role or new_role not in [r.value for r in UserRole]:
+            return Response({"success": False, "message": f"Invalid role '{new_role}'."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if target_user.role == new_role:
+            return Response({"success": False, "message": f"User is already assigned the role '{new_role}'."}, status=status.HTTP_400_BAD_REQUEST)
+
+        actor = request.user
+        actor_rank = ROLE_RANKS.get(actor.role, 0)
+        current_target_rank = ROLE_RANKS.get(target_user.role, 0)
+        new_target_rank = ROLE_RANKS.get(new_role, 0)
+
+        if not actor.is_superuser and actor.role != UserRole.OWNER:
+            # Cannot modify a user with rank >= actor rank
+            if actor_rank <= current_target_rank:
+                return Response({
+                    "success": False,
+                    "message": f"Permission denied: Cannot modify the role of a user with rank ({current_target_rank}) equal to or higher than your own ({actor_rank})."
+                }, status=status.HTTP_403_FORBIDDEN)
+
+            # Cannot promote a user to a rank >= actor rank
+            if actor_rank <= new_target_rank:
+                return Response({
+                    "success": False,
+                    "message": f"Permission denied: Cannot promote a user to rank ({new_target_rank}) equal to or higher than your own ({actor_rank})."
+                }, status=status.HTTP_403_FORBIDDEN)
+
+        # Sole owner check
+        if target_user.role == UserRole.OWNER and target_user.is_sole_owner() and new_role != UserRole.OWNER:
+            return Response({
+                "success": False,
+                "message": "Security violation: Cannot demote the sole organization owner. Transfer ownership or assign a co-owner first."
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        old_role = target_user.role
+        target_user.role = new_role
+        target_user.token_version += 1  # Invalidate active sessions immediately
+        target_user.save(update_fields=['role', 'token_version'])
+
+        AuditLog.objects.create(
+            school=school,
+            actor=actor,
+            actor_username=actor.username,
+            actor_role=actor.role,
+            action="USER_ROLE_CHANGED",
+            resource_type="User",
+            resource_id=str(target_user.id),
+            details={
+                "username": target_user.username,
+                "old_role": old_role,
+                "new_role": new_role,
+            },
+            ip_address=request.META.get('REMOTE_ADDR')
+        )
+
+        return Response({
+            "success": True,
+            "message": f"Role for '{target_user.username}' successfully changed from '{old_role}' to '{new_role}'. Active sessions invalidated.",
+            "data": UserSerializer(target_user).data
         })
 
 

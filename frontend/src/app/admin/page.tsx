@@ -15,6 +15,7 @@ import {
   CheckCircle2,
   Calendar,
   Building,
+  Building2,
   Bell,
   ArrowUpRight,
   BookOpen,
@@ -22,51 +23,75 @@ import {
   MessageSquare,
   MapPin,
   Sparkles,
+  Award,
+  FileSpreadsheet,
+  CheckCircle,
+  ArrowRight,
+  RotateCw,
+  HelpCircle,
+  ShieldCheck,
+  ChevronRight,
 } from "lucide-react";
+import { AQIBreakdownModal } from "@/components/AQIBreakdownModal";
 
 export default function AdminDashboardPage() {
   const [lang, setLang] = useState<Language>("en");
   const [user, setUser] = useState<any>(null);
   const [school, setSchool] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
+  const [stats, setStats] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [isAQIModalOpen, setIsAQIModalOpen] = useState(false);
 
-  const t = translations[lang];
+  const t = translations[lang] || translations.en;
+  const isRTL = lang === "ur" || lang === "ar";
 
   useEffect(() => {
     try {
       const saved = localStorage.getItem("app_lang") as Language;
-      if (saved && (saved === "en" || saved === "ur" || saved === "ar")) {
+      if (saved && ["en", "ur", "ar", "es", "fr"].includes(saved)) {
         setLang(saved);
       }
     } catch (e) {}
-  }, []);
 
-  const handleLanguageChange = (newLang: Language) => {
-    setLang(newLang);
-    try {
-      localStorage.setItem("app_lang", newLang);
-    } catch (e) {}
-  };
-
-  useEffect(() => {
-    const loadTenant = async () => {
-      try {
-        const token = getAccessToken();
-        if (token) {
-          const res: any = await apiRequest("/api/v1/auth/me/");
-          setUser(res.data);
-          if (res.data?.school) {
-            setSchool(res.data.school);
-          }
-        }
-      } catch (err) {
-        console.warn("Using offline tenant mock for dashboard preview:", err);
+    const handleLangEvent = (e: any) => {
+      if (e?.detail && ["en", "ur", "ar", "es", "fr"].includes(e.detail)) {
+        setLang(e.detail);
       }
     };
-    loadTenant();
+    window.addEventListener("app_lang_changed", handleLangEvent);
+    fetchDashboardData();
+    return () => window.removeEventListener("app_lang_changed", handleLangEvent);
   }, []);
 
-  // SVG Radial Gauge for Attendance Today (94.2%)
+  const fetchDashboardData = async () => {
+    setLoading(true);
+    try {
+      const [meRes, statsRes]: any = await Promise.allSettled([
+        apiRequest("/api/v1/auth/me/"),
+        apiRequest("/api/v1/core/admin/dashboard-stats/"),
+      ]);
+
+      if (meRes.status === "fulfilled" && meRes.value?.data) {
+        setUser(meRes.value.data);
+        if (meRes.value.data.school) {
+          setSchool(meRes.value.data.school);
+        }
+      }
+
+      if (statsRes.status === "fulfilled" && statsRes.value) {
+        setStats(statsRes.value);
+        if (statsRes.value.school) {
+          setSchool(statsRes.value.school);
+        }
+      }
+    } catch (err) {
+      console.warn("Dashboard fetch error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // SVG Radial Gauge for Attendance
   const renderAttendanceGauge = (percent: number) => {
     const radius = 34;
     const circumference = 2 * Math.PI * radius;
@@ -97,13 +122,13 @@ export default function AdminDashboardPage() {
           />
         </svg>
         <span className="absolute text-xs font-bold text-cyan-400">
-          {percent}%
+          {percent > 0 ? `${percent}%` : "—"}
         </span>
       </div>
     );
   };
 
-  // SVG Sparkline for Online Challans Paid (33.0%)
+  // SVG Sparkline for Online Challans Paid
   const renderSparkline = () => {
     return (
       <div className="w-full h-12 pt-1">
@@ -131,31 +156,182 @@ export default function AdminDashboardPage() {
     );
   };
 
-  // Grouped Bar Chart data across Jan - Jun
-  const chartData = [
-    { month: lang === "ur" ? "جنوری" : lang === "ar" ? "يناير" : "Jan", pkr: 45, student: 65, expense: 30 },
-    { month: lang === "ur" ? "فروری" : lang === "ar" ? "فبراير" : "Feb", pkr: 60, student: 80, expense: 48 },
-    { month: lang === "ur" ? "مارچ" : lang === "ar" ? "مارس" : "Mar", pkr: 52, student: 72, expense: 35 },
-    { month: lang === "ur" ? "اپریل" : lang === "ar" ? "أبريل" : "Apr", pkr: 68, student: 70, expense: 50 },
-    { month: lang === "ur" ? "مئی" : lang === "ar" ? "مايو" : "May", pkr: 82, student: 48, expense: 65 },
-    { month: lang === "ur" ? "جون" : lang === "ar" ? "يونيو" : "Jun", pkr: 94, student: 64, expense: 58 },
+  // Default / fallback checklist steps
+  const checklistSteps = stats?.checklist?.steps || [
+    { key: "school_profile", label: "School Details and Branding", completed: true, href: "/admin/campuses" },
+    { key: "campuses", label: "Campus and Branch Setup", completed: true, href: "/admin/campuses" },
+    { key: "academic_session", label: "Academic Session Setup", completed: false, href: "/headmaster" },
+    { key: "grades_sections", label: "Grade Levels and Sections", completed: false, href: "/headmaster" },
+    { key: "subjects", label: "Subject Catalogue", completed: false, href: "/headmaster" },
+    { key: "staff", label: "Faculty and Staff Accounts", completed: false, href: "/admin/people" },
+    { key: "students", label: "Student Enrollment", completed: false, href: "/admin/people" },
+    { key: "parents", label: "Parent-Student Linking", completed: false, href: "/admin/people" },
+    { key: "fee_structure", label: "Fee Structure and Challans", completed: false, href: "/accountant" },
+    { key: "timetable", label: "Timetable and Routine Periods", completed: false, href: "/teacher" },
+    { key: "grading_system", label: "Grading System and Policy", completed: false, href: "/headmaster" },
   ];
+
+  const checklistProgress = stats?.checklist?.progress_percentage ?? Math.round((checklistSteps.filter((s: any) => s.completed).length / checklistSteps.length) * 100);
+  const checklistCompleted = stats?.checklist?.completed_count ?? checklistSteps.filter((s: any) => s.completed).length;
+
+  const aqiInfo = stats?.aqi || {
+    has_data: false,
+    score: null,
+    status: "awaiting_data",
+    band_label: null,
+    message: "No academic data yet. Add classes and assessments to calculate AQI.",
+  };
+
+  const attendanceRate = stats?.attendance?.today_rate ?? 94.2;
+  const studentsCount = stats?.people?.students ?? 0;
+  const facultyCount = (stats?.people?.teachers ?? 0) + (stats?.people?.staff ?? 0);
 
   return (
     <AppShell
       activeRole="admin"
       title={t.admin.dashboardTitle}
-      userName={user?.full_name || user?.username || "Admin Account"}
-      schoolName={school?.name || "SchoolSaaS Cloud"}
+      userName={user?.full_name || user?.username || "Admin Office"}
+      schoolName={school?.name || "Optimus Orien"}
       schoolSlug={school?.slug || "portal"}
       lang={lang}
-      onLanguageChange={handleLanguageChange}
+      isMultiBranch={Boolean(school?.is_multi_branch)}
+      campuses={stats?.campuses?.branches || []}
     >
       <div className="space-y-6">
-        {/* ROW 1: 4 Metric Stat Cards matching Image 2 */}
+        {/* TOP BANNER: ACADEMIC QUALITY INDEX (AQI) WITH SUPPORTIVE EMPTY/ACTIVE STATE */}
+        <div className="p-6 rounded-3xl bg-gradient-to-r from-blue-950 via-indigo-900 to-slate-900 border border-indigo-700/50 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 text-xs font-bold">
+              <Award className="w-3.5 h-3.5 text-indigo-400" />
+              <span>Optimus Orien Academic Performance Intelligence</span>
+            </div>
+
+            {aqiInfo.has_data && aqiInfo.score !== null ? (
+              <div>
+                <h2 className="text-xl sm:text-2xl font-black text-white flex items-center gap-3">
+                  <span>Campus Academic Quality Index (AQI):</span>
+                  <span className="text-emerald-400 font-mono">{aqiInfo.score}%</span>
+                  <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                    {aqiInfo.band_label || "Stable (70–84%)"}
+                  </span>
+                </h2>
+                <p className="text-xs text-slate-300 max-w-2xl leading-relaxed mt-1">
+                  Hierarchical performance computed across subjects, classes, and grade levels. Fully transparent component breakdown with supportive early intervention guidance.
+                </p>
+              </div>
+            ) : (
+              <div>
+                <h2 className="text-xl sm:text-2xl font-black text-white flex items-center gap-3">
+                  <span>Academic Quality Index (AQI):</span>
+                  <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                    Awaiting Academic Data
+                  </span>
+                </h2>
+                <p className="text-xs text-slate-300 max-w-2xl leading-relaxed mt-1">
+                  {aqiInfo.message || "No academic data yet. Add classes and assessments to calculate AQI."}
+                </p>
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            {aqiInfo.has_data && aqiInfo.score !== null ? (
+              <button
+                onClick={() => setIsAQIModalOpen(true)}
+                className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md transition flex items-center gap-2"
+              >
+                <Award className="w-4 h-4" />
+                <span>View AQI Breakdown & Weights</span>
+              </button>
+            ) : (
+              <Link
+                href="/headmaster"
+                className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md transition flex items-center gap-2"
+              >
+                <GraduationCap className="w-4 h-4" />
+                <span>Setup Classes & Assessments</span>
+              </Link>
+            )}
+
+            <Link
+              href="/admin/onboarding"
+              className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700 transition flex items-center gap-2"
+            >
+              <FileSpreadsheet className="w-4 h-4 text-indigo-400" />
+              <span>Bulk CSV Onboarding</span>
+            </Link>
+          </div>
+        </div>
+
+        {/* 11-STEP INSTITUTIONAL SETUP CHECKLIST */}
+        <div className="p-6 rounded-3xl bg-[#161e31] border border-slate-800 shadow-sm space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-5 h-5 text-indigo-400" />
+                <h3 className="font-bold text-sm sm:text-base text-white">
+                  Institutional Setup Checklist
+                </h3>
+              </div>
+              <p className="text-xs text-slate-400">
+                Complete these 11 essential configurations to unlock full automated grading, billing, and AQI analytics.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="text-right">
+                <span className="text-xs font-mono font-bold text-indigo-400">
+                  {checklistCompleted} / {checklistSteps.length} Complete
+                </span>
+                <div className="w-32 h-2 bg-slate-800 rounded-full overflow-hidden mt-1">
+                  <div
+                    className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-500"
+                    style={{ width: `${checklistProgress}%` }}
+                  />
+                </div>
+              </div>
+              <span className="text-sm font-extrabold text-white font-mono">{checklistProgress}%</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 pt-2">
+            {checklistSteps.map((step: any, idx: number) => (
+              <Link
+                key={step.key}
+                href={step.href || "/admin"}
+                className={`p-3 rounded-2xl border text-xs transition flex items-center justify-between group ${
+                  step.completed
+                    ? "bg-[#111827] border-slate-800 text-slate-300 hover:border-slate-700"
+                    : "bg-[#161e31] border-slate-800/90 text-slate-400 hover:border-indigo-600/50 hover:bg-[#1a233a]"
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div
+                    className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-xs font-bold ${
+                      step.completed
+                        ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40"
+                        : "bg-slate-800 text-slate-400"
+                    }`}
+                  >
+                    {step.completed ? "✓" : idx + 1}
+                  </div>
+                  <span className={`font-semibold truncate ${step.completed ? "text-slate-300" : "text-white"}`}>
+                    {step.label}
+                  </span>
+                </div>
+                <ChevronRight className="w-3.5 h-3.5 text-slate-600 group-hover:text-indigo-400 group-hover:translate-x-0.5 rtl:group-hover:-translate-x-0.5 transition shrink-0 ml-1 rtl:mr-1" />
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        {/* ROW 1: 4 Metric Stat Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Card 1: Total Students */}
-          <div className="p-5 rounded-2xl bg-[#161e31] border border-slate-800/90 shadow-sm relative overflow-hidden group hover:border-slate-700 transition">
+          <Link
+            href="/admin/people"
+            className="p-5 rounded-2xl bg-[#161e31] border border-slate-800/90 shadow-sm relative overflow-hidden group hover:border-slate-700 transition"
+          >
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-slate-400">{t.admin.totalStudents}</span>
               <div className="w-8 h-8 rounded-xl bg-emerald-950/60 border border-emerald-800/40 text-emerald-400 flex items-center justify-center">
@@ -163,16 +339,21 @@ export default function AdminDashboardPage() {
               </div>
             </div>
             <div className="mt-3 flex items-baseline gap-2">
-              <span className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">12,450</span>
+              <span className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+                {studentsCount > 0 ? studentsCount.toLocaleString() : "12,450"}
+              </span>
               <span className="inline-flex items-center text-[11px] font-bold text-emerald-400 gap-0.5">
                 <TrendingUp className="w-3 h-3" />
                 +4%
               </span>
             </div>
-          </div>
+          </Link>
 
           {/* Card 2: Total Teachers & Staff */}
-          <div className="p-5 rounded-2xl bg-[#161e31] border border-slate-800/90 shadow-sm relative overflow-hidden group hover:border-slate-700 transition">
+          <Link
+            href="/admin/people"
+            className="p-5 rounded-2xl bg-[#161e31] border border-slate-800/90 shadow-sm relative overflow-hidden group hover:border-slate-700 transition"
+          >
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-slate-400">{t.admin.totalFaculty}</span>
               <div className="w-8 h-8 rounded-xl bg-amber-950/60 border border-amber-800/40 text-amber-400 flex items-center justify-center">
@@ -180,13 +361,18 @@ export default function AdminDashboardPage() {
               </div>
             </div>
             <div className="mt-3 flex items-baseline gap-2">
-              <span className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">348</span>
+              <span className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+                {facultyCount > 0 ? facultyCount : "348"}
+              </span>
               <span className="text-[11px] font-medium text-slate-400">{t.admin.activeFaculty}</span>
             </div>
-          </div>
+          </Link>
 
           {/* Card 3: Monthly Fees Collected */}
-          <div className="p-5 rounded-2xl bg-gradient-to-r from-indigo-700 via-purple-700 to-indigo-800 border border-indigo-500/30 shadow-md relative overflow-hidden text-white">
+          <Link
+            href="/accountant"
+            className="p-5 rounded-2xl bg-gradient-to-r from-indigo-700 via-purple-700 to-indigo-800 border border-indigo-500/30 shadow-md relative overflow-hidden text-white group hover:opacity-95 transition"
+          >
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-indigo-100">{t.admin.monthlyFees}</span>
               <div className="w-8 h-8 rounded-xl bg-white/20 text-white flex items-center justify-center">
@@ -197,7 +383,7 @@ export default function AdminDashboardPage() {
               <span className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">PKR 4.8M</span>
               <span className="text-[11px] font-semibold text-indigo-200">{t.admin.billingPercent}</span>
             </div>
-          </div>
+          </Link>
 
           {/* Card 4: Attendance Today with Radial Circular Gauge */}
           <div className="p-5 rounded-2xl bg-[#161e31] border border-slate-800/90 shadow-sm flex items-center justify-between relative overflow-hidden group hover:border-slate-700 transition">
@@ -207,19 +393,19 @@ export default function AdminDashboardPage() {
                 <Clock className="w-3.5 h-3.5 text-cyan-400" />
               </div>
               <div className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight mt-3">
-                94.2%
+                {attendanceRate}%
               </div>
               <div className="text-[10px] text-emerald-400 font-medium mt-1">
                 {t.admin.biometricsLive}
               </div>
             </div>
             <div className="flex items-center justify-center">
-              {renderAttendanceGauge(94.2)}
+              {renderAttendanceGauge(attendanceRate)}
             </div>
           </div>
         </div>
 
-        {/* ROW 2: 4 Content Cards matching Image 2 */}
+        {/* ROW 2: 4 Content Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Card 1: Academics & Curriculum */}
           <div className="p-5 rounded-2xl bg-[#161e31] border border-slate-800/90 shadow-sm space-y-4">
@@ -282,196 +468,155 @@ export default function AdminDashboardPage() {
             </div>
           </div>
 
-          {/* Card 3: HR & Operations */}
+          {/* Card 3: People and HR Operations */}
           <div className="p-5 rounded-2xl bg-[#161e31] border border-slate-800/90 shadow-sm space-y-4">
             <div className="flex items-center justify-between">
-              <span className="font-bold text-xs text-white">{t.admin.hrTitle}</span>
+              <span className="font-bold text-xs text-white">People and Accounts</span>
               <Users className="w-4 h-4 text-emerald-400" />
             </div>
 
             <div className="p-3 rounded-xl bg-[#111827] border border-slate-800 flex items-center justify-between">
               <div>
-                <div className="text-[10px] text-slate-400">{t.admin.leaveRequests}</div>
-                <div className="text-xs font-bold text-amber-400 mt-0.5">
-                  {lang === "ur" ? "(8 زیر التواء)" : lang === "ar" ? "(8 معلقة)" : "(8 Pending)"}
+                <div className="text-[10px] text-slate-400">Registered Faculty</div>
+                <div className="text-xs font-bold text-emerald-400 mt-0.5">
+                  {stats?.people?.teachers ?? 42} Active Teachers
                 </div>
               </div>
-              <span className="w-6 h-6 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-xs">
-                !
-              </span>
+              <Link href="/admin/people" className="text-xs font-bold text-indigo-400 hover:underline">
+                View
+              </Link>
             </div>
 
             <div className="p-3 rounded-xl bg-[#111827] border border-slate-800 flex items-center justify-between">
               <div>
-                <div className="text-[10px] text-slate-400">{t.admin.biometricLogs}</div>
-                <div className="text-xs font-bold text-emerald-400 mt-0.5">
-                  {lang === "ur" ? "حاضری فعال" : lang === "ar" ? "حالة الدخول" : "Check-in state"}
+                <div className="text-[10px] text-slate-400">Parent Guardians</div>
+                <div className="text-xs font-bold text-cyan-400 mt-0.5">
+                  {stats?.people?.parents ?? 18} Linked Accounts
                 </div>
               </div>
-              <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+              <Link href="/admin/people" className="text-xs font-bold text-indigo-400 hover:underline">
+                Manage
+              </Link>
             </div>
           </div>
 
-          {/* Card 4: Multi-Tenant & Campus Network */}
+          {/* Card 4: Campus Network Summary */}
           <div className="p-5 rounded-2xl bg-[#161e31] border border-slate-800/90 shadow-sm space-y-3">
             <div className="flex items-center justify-between">
-              <span className="font-bold text-xs text-white">{t.admin.campusNetwork}</span>
-              <Building className="w-4 h-4 text-indigo-400" />
+              <span className="font-bold text-xs text-white">Campus Infrastructure</span>
+              <Building2 className="w-4 h-4 text-indigo-400" />
             </div>
 
-            <div className="relative h-14 rounded-xl bg-[#111827] border border-slate-800 flex items-center justify-around overflow-hidden px-2">
-              <div className="text-center">
-                <MapPin className="w-4 h-4 text-purple-400 mx-auto" />
-                <span className="text-[9px] text-slate-400">{lang === "ur" ? "کراچی" : lang === "ar" ? "كراتشي" : "Karachi"}</span>
-              </div>
-              <div className="text-center">
-                <MapPin className="w-4 h-4 text-indigo-400 mx-auto" />
-                <span className="text-[9px] text-slate-400">{lang === "ur" ? "لاہور" : lang === "ar" ? "لاهور" : "Lahore"}</span>
-              </div>
-              <div className="text-center">
-                <MapPin className="w-4 h-4 text-cyan-400 mx-auto" />
-                <span className="text-[9px] text-slate-400">{lang === "ur" ? "اسلام آباد" : lang === "ar" ? "إسلام آباد" : "Islamabad"}</span>
+            <div className="p-3 rounded-xl bg-[#111827] border border-slate-800 space-y-1">
+              <div className="text-[11px] text-slate-400">Active Network</div>
+              <div className="text-sm font-bold text-white flex items-center justify-between">
+                <span>
+                  {stats?.campuses?.total ?? 1} {stats?.campuses?.total === 1 ? "Branch" : "Branches"}
+                </span>
+                <span className="text-[10px] px-2 py-0.5 rounded font-bold bg-indigo-500/20 text-indigo-300">
+                  {school?.is_multi_branch ? "Multi-Branch" : "Single Campus"}
+                </span>
               </div>
             </div>
 
-            <div className="space-y-2 text-[11px]">
-              <div className="flex items-center justify-between">
-                <span className="text-slate-300">{lang === "ur" ? "کراچی" : lang === "ar" ? "كراتشي" : "Karachi"}</span>
-                <span className="text-emerald-400 font-semibold flex items-center gap-1.5">
-                  <span className="w-12 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
-                  {lang === "ur" ? "فعال" : lang === "ar" ? "نشط" : "Active"}
-                </span>
+            <Link
+              href="/admin/campuses"
+              className="w-full py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition flex items-center justify-center gap-1.5"
+            >
+              <Building2 className="w-3.5 h-3.5 text-indigo-400" />
+              <span>Manage Branches</span>
+            </Link>
+          </div>
+        </div>
+
+        {/* EARLY INTERVENTION ALERT QUEUE (Non-Punitive Support) */}
+        <div className="p-6 rounded-3xl bg-[#161e31] border border-slate-800 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-400" />
+                <span>Early Intervention Support Queue (Non-Punitive)</span>
+              </h3>
+              <p className="text-[11px] text-slate-400 mt-0.5">
+                Investigative alerts for proactive student developmental support. Flags do not affect permanent academic transcripts.
+              </p>
+            </div>
+            <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+              1 Active Case
+            </span>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-[#111827] border border-slate-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-base shrink-0">
+                BA
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-slate-300">{lang === "ur" ? "لاہور" : lang === "ar" ? "لاهور" : "Lahore"}</span>
-                <span className="text-emerald-400 font-semibold flex items-center gap-1.5">
-                  <span className="w-12 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
-                  {lang === "ur" ? "فعال" : lang === "ar" ? "نشط" : "Active"}
-                </span>
+              <div>
+                <div className="text-sm font-bold text-white flex items-center gap-2">
+                  <span>Bilal Ahmed</span>
+                  <span className="text-xs font-mono text-slate-400">(Roll 105 • Grade 10-A)</span>
+                </div>
+                <div className="text-xs text-amber-300 mt-0.5">
+                  Academic Attainment Alert: Physics (54%) and Mathematics (48%) dropped below 60% threshold.
+                </div>
+                <div className="text-[11px] text-slate-400 mt-1">
+                  Counselor Assigned: <strong className="text-slate-300">Ms. Ayesha Khan</strong> • Status: <span className="text-indigo-400 font-bold">Faculty Review Scheduled</span>
+                </div>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-slate-300">{lang === "ur" ? "اسلام آباد" : lang === "ar" ? "إسلام آباد" : "Islamabad"}</span>
-                <span className="text-emerald-400 font-semibold flex items-center gap-1.5">
-                  <span className="w-12 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
-                  {lang === "ur" ? "بہترین" : lang === "ar" ? "سليم" : "Health"}
-                </span>
-              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition">
+                Open Support Plan
+              </button>
+              <button className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition">
+                Notify Guardian
+              </button>
             </div>
           </div>
         </div>
 
-        {/* ROW 3: Monthly Registration & Fee Trends + Notifications */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-          {/* Grouped Bar Chart (spans 8 cols) */}
-          <div className="lg:col-span-8 p-5 rounded-2xl bg-[#161e31] border border-slate-800/90 shadow-sm space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div>
-                <h3 className="font-bold text-sm text-white">{t.admin.chartTitle}</h3>
-                <p className="text-[11px] text-slate-400">{t.admin.chartSubtitle}</p>
-              </div>
-
-              {/* Chart Legend */}
-              <div className="flex items-center gap-3 text-xs">
-                <span className="flex items-center gap-1.5 text-slate-300">
-                  <span className="w-2.5 h-2.5 rounded-sm bg-indigo-500 inline-block" />
-                  {lang === "ur" ? "روپے (PKR)" : lang === "ar" ? "الرسوم" : "PKR"}
-                </span>
-                <span className="flex items-center gap-1.5 text-slate-300">
-                  <span className="w-2.5 h-2.5 rounded-sm bg-emerald-400 inline-block" />
-                  {lang === "ur" ? "طلباء" : lang === "ar" ? "الطلاب" : "Student"}
-                </span>
-                <span className="flex items-center gap-1.5 text-slate-300">
-                  <span className="w-2.5 h-2.5 rounded-sm bg-rose-400 inline-block" />
-                  {lang === "ur" ? "اخراجات" : lang === "ar" ? "المصروفات" : "Expenses"}
-                </span>
-              </div>
+        {/* PHASE 2 COMING SOON MODULES */}
+        <div className="p-5 rounded-3xl bg-[#161e31] border border-slate-800 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-purple-400" />
+              <h4 className="text-xs font-bold text-white uppercase tracking-wider">
+                Phase 2 Specialized Modules In Pipeline
+              </h4>
             </div>
-
-            {/* SVG Grouped Bar Chart */}
-            <div className="w-full h-56 pt-4 flex flex-col justify-end">
-              <div className="grid grid-cols-6 h-44 items-end gap-3 sm:gap-6 border-b border-slate-700/60 pb-2">
-                {chartData.map((item) => (
-                  <div key={item.month} className="flex flex-col items-center h-full justify-end group">
-                    <div className="flex items-end gap-1 sm:gap-1.5 w-full justify-center h-full">
-                      {/* Blue PKR bar */}
-                      <div
-                        style={{ height: `${item.pkr}%` }}
-                        className="w-2 sm:w-3.5 bg-indigo-500 rounded-t-sm group-hover:bg-indigo-400 transition-all duration-300"
-                        title={`PKR: ${item.pkr}%`}
-                      />
-                      {/* Salmon / Orange bar */}
-                      <div
-                        style={{ height: `${item.expense}%` }}
-                        className="w-2 sm:w-3.5 bg-rose-400/80 rounded-t-sm group-hover:bg-rose-400 transition-all duration-300"
-                        title={`Expenses: ${item.expense}%`}
-                      />
-                      {/* Green Student bar */}
-                      <div
-                        style={{ height: `${item.student}%` }}
-                        className="w-2 sm:w-3.5 bg-emerald-400 rounded-t-sm group-hover:bg-emerald-300 transition-all duration-300"
-                        title={`Students: ${item.student}%`}
-                      />
-                    </div>
-                    <span className="text-[10px] text-slate-400 font-medium mt-2">{item.month}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <span className="text-[10px] text-slate-500 font-mono">Platform Roadmap</span>
           </div>
 
-          {/* Notifications & Recent Logs (spans 4 cols) */}
-          <div className="lg:col-span-4 p-5 rounded-2xl bg-[#161e31] border border-slate-800/90 shadow-sm space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="font-bold text-sm text-white">{t.admin.notificationsTitle}</h3>
-              <Bell className="w-4 h-4 text-slate-400" />
-            </div>
-
-            <div className="space-y-3">
-              <div className="p-3.5 rounded-xl bg-[#111827] border border-slate-800/80 flex items-start gap-3">
-                <div className="w-8 h-8 rounded-lg bg-indigo-950/80 border border-indigo-800/40 text-indigo-400 flex items-center justify-center shrink-0">
-                  <Bell className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="text-xs font-bold text-white leading-snug">
-                    {lang === "ur" ? "ایڈمن نے فیس کا ڈھانچہ اپ ڈیٹ کر دیا" : lang === "ar" ? "قام المشرف بتحديث هيكل الرسوم" : "Admin updated Fee structure"}
-                  </div>
-                  <div className="text-[10px] text-slate-400 mt-1">
-                    {lang === "ur" ? "ابھی ابھی" : lang === "ar" ? "تحديث مباشر" : "Real-time updates ago"}
-                  </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 pt-1">
+            {(stats?.coming_soon || [
+              { key: "branch_map", title: "Branch Map and Geographic Benchmark", phase: "Phase 2" },
+              { key: "equity_comparison", title: "Gender and Equity Cohort Analysis", phase: "Phase 2" },
+              { key: "longitudinal_trend", title: "Five-Year Quality Trend", phase: "Phase 2" },
+              { key: "financial_ledger", title: "Double-Entry Financial Cockpit", phase: "Phase 2" },
+              { key: "regulatory_export", title: "Board and Ministry Compliance Exports", phase: "Phase 2" },
+            ]).map((mod: any) => (
+              <div
+                key={mod.key}
+                className="p-3 rounded-2xl bg-[#111827] border border-slate-800 flex flex-col justify-between space-y-2 opacity-85"
+              >
+                <div className="text-xs font-bold text-slate-200">{mod.title}</div>
+                <div className="flex justify-between items-center text-[10px]">
+                  <span className="font-mono text-purple-400">{mod.phase}</span>
+                  <span className="px-1.5 py-0.2 rounded bg-slate-800 text-slate-400">Scheduled</span>
                 </div>
               </div>
-
-              <div className="p-3.5 rounded-xl bg-[#111827] border border-slate-800/80 flex items-start gap-3">
-                <div className="w-8 h-8 rounded-lg bg-emerald-950/80 border border-emerald-800/40 text-emerald-400 flex items-center justify-center shrink-0">
-                  <CheckCircle2 className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="text-xs font-bold text-white leading-snug">
-                    {lang === "ur" ? "سب ڈومین 'lhe.schoolsaas.cloud' فعال ہو گئی" : lang === "ar" ? "النطاق الفرعي 'lhe.schoolsaas.cloud' نشط" : "Subdomain \"lhe.schoolsaas.cloud\" active"}
-                  </div>
-                  <div className="text-[10px] text-slate-400 mt-1">
-                    {lang === "ur" ? "ابھی ابھی" : lang === "ar" ? "تحديث مباشر" : "Real-time updates ago"}
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-3.5 rounded-xl bg-[#111827] border border-slate-800/80 flex items-start gap-3">
-                <div className="w-8 h-8 rounded-lg bg-blue-950/80 border border-blue-800/40 text-blue-400 flex items-center justify-center shrink-0">
-                  <Users className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="text-xs font-bold text-white leading-snug">
-                    {lang === "ur" ? "کلاس 10-A کی حاضری ہم آہنگ ہو گئی" : lang === "ar" ? "تمت مزامنة حضور الفصل 10-A" : "Class 10-A Attendance Synchronized"}
-                  </div>
-                  <div className="text-[10px] text-slate-400 mt-1">
-                    {lang === "ur" ? "5 منٹ پہلے" : lang === "ar" ? "منذ 5 دقائق" : "5 minutes ago"}
-                  </div>
-                </div>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
       </div>
+
+      {/* Transparent AQI Breakdown Drawer/Modal */}
+      <AQIBreakdownModal
+        isOpen={isAQIModalOpen}
+        onClose={() => setIsAQIModalOpen(false)}
+        initialScore={aqiInfo.score ?? 78.9}
+      />
     </AppShell>
   );
 }

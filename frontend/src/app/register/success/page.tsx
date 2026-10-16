@@ -78,7 +78,7 @@ export default function RegisterSuccessPage() {
                   {data.slug}
                 </div>
                 <div className="text-[11px] text-slate-500">
-                  Subdomain: <strong className="text-slate-700 dark:text-slate-300 font-mono">{data.slug}.schoolsaas.cloud</strong>
+                  Subdomain: <strong className="text-slate-700 dark:text-slate-300 font-mono">{data.slug}.optimusorien.cloud</strong>
                 </div>
               </div>
 

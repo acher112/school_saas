@@ -7,6 +7,7 @@ and asserts that tenant isolation guarantees hold for every single one:
 3. Attempting to assign an existing record to a different tenant is rejected.
 4. Attempting to write a record for a foreign tenant is rejected.
 """
+import uuid
 import pytest
 from datetime import date
 from django.apps import apps
@@ -58,21 +59,31 @@ def create_model_fixture(model_cls, school, suffix="1"):
             kwargs[field.name] = True
         elif field_type in ('IntegerField', 'PositiveIntegerField', 'PositiveSmallIntegerField'):
             kwargs[field.name] = 1
+        elif field_type in ('DecimalField', 'FloatField'):
+            from decimal import Decimal
+            kwargs[field.name] = Decimal("50.00")
         elif field_type == 'JSONField':
             kwargs[field.name] = {"sample": "data"}
         elif field.is_relation and field.related_model:
             target_model = field.related_model
             if target_model.__name__ == 'User':
                 from apps.authentication.models import User, UserRole
-                role = UserRole.STUDENT if 'student' in field.name else (UserRole.PARENT if 'parent' in field.name else UserRole.STAFF)
-                u = User.objects.create(
-                    school=school,
-                    username=f"u_{field.name}_{suffix}_{school.id}"[:30],
-                    role=role,
-                )
+                role = UserRole.STUDENT if 'student' in field.name else (UserRole.PARENT if 'parent' in field.name else UserRole.TEACHER)
+                uname = f"u_{field.name}_{suffix}_{school.id}"[:30]
+                u = User.objects.filter(username=uname).first()
+                if not u:
+                    u = User.objects.create(
+                        school=school,
+                        username=uname,
+                        role=role,
+                    )
                 kwargs[field.name] = u
             elif issubclass(target_model, BaseTenantModel):
-                kwargs[field.name] = create_model_fixture(target_model, school, suffix=f"{suffix}_rel")
+                existing = target_model._unscoped.filter(school=school).first()
+                if existing:
+                    kwargs[field.name] = existing
+                else:
+                    kwargs[field.name] = create_model_fixture(target_model, school, suffix=f"{suffix}_rel_{uuid.uuid4().hex[:4]}")
 
     return model_cls.objects.create(**kwargs)
 

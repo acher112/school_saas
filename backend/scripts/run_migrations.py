@@ -20,6 +20,14 @@ django.setup()
 from django.db import connection
 from django.core.management import call_command
 
+def apply_grants(cur):
+    cur.execute("GRANT USAGE ON SCHEMA public TO school_saas_app;")
+    cur.execute("GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO school_saas_app;")
+    cur.execute("GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA public TO school_saas_app;")
+    cur.execute("ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO school_saas_app;")
+    cur.execute("ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO school_saas_app;")
+    cur.execute("REVOKE TRUNCATE ON ALL TABLES IN SCHEMA public FROM school_saas_app;")
+
 with connection.cursor() as cur:
     cur.execute("SELECT current_user, session_user;")
     user_info = cur.fetchone()
@@ -27,13 +35,17 @@ with connection.cursor() as cur:
     assert user_info[0] == 'school_saas_owner', f"Expected school_saas_owner, got {user_info[0]}"
 
 print("Applying migrations to school_saas_dev...")
-call_command('migrate', 'core', '0002', interactive=False)
 call_command('migrate', interactive=False)
+with connection.cursor() as cur:
+    apply_grants(cur)
+print("Grants applied to school_saas_dev.")
 
 from django.conf import settings
 settings.DATABASES['default']['NAME'] = 'school_saas_test'
 connection.close()
 print("Applying migrations to school_saas_test...")
-call_command('migrate', 'core', '0002', interactive=False)
 call_command('migrate', interactive=False)
+with connection.cursor() as cur:
+    apply_grants(cur)
+print("Grants applied to school_saas_test.")
 print("Migrations completed successfully on both databases.")

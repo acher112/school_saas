@@ -215,7 +215,7 @@ export default function UsersManagementPage() {
   };
 
   const downloadCredentialCSV = (slip: CredentialSlip) => {
-    const origin = typeof window !== "undefined" ? window.location.origin : "https://portal.myschoolsaas.com";
+    const origin = typeof window !== "undefined" ? window.location.origin : "https://portal.optimusorien.com";
     const csvContent =
       "data:text/csv;charset=utf-8," +
       [
@@ -250,7 +250,7 @@ export default function UsersManagementPage() {
   };
 
   const copyCredentialDetails = (slip: CredentialSlip) => {
-    const origin = typeof window !== "undefined" ? window.location.origin : "https://portal.myschoolsaas.com";
+    const origin = typeof window !== "undefined" ? window.location.origin : "https://portal.optimusorien.com";
     const text = [
       `School Name: ${slip.schoolName}`,
       `School Code: ${slip.schoolSlug}`,
@@ -533,7 +533,7 @@ export default function UsersManagementPage() {
                       {credentialSlip.schoolName}
                     </div>
                     <div className="text-[11px] font-mono text-slate-400">
-                      Portal: {credentialSlip.schoolSlug}.myschoolsaas.com
+                      Portal: {credentialSlip.schoolSlug}.portal.optimusorien.com
                     </div>
                   </div>
                   <span className="px-2.5 py-1 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 text-[10px] font-bold uppercase">

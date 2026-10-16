@@ -31,7 +31,7 @@ export default function ForSchoolsPage() {
           <div className="p-8 rounded-3xl bg-white dark:bg-[#161e31] border border-slate-200 dark:border-slate-800 space-y-4">
             <h3 className="text-lg font-bold">Dedicated Subdomain & Private Identity</h3>
             <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-              Every institution receives its own private subdomain (e.g. <code>lahore-grammar.schoolsaas.cloud</code>) with custom crest, primary and accent brand colors, and localized school codes.
+              Every institution receives its own private subdomain (e.g. <code>lahore-grammar.optimusorien.cloud</code>) with custom crest, primary and accent brand colors, and localized school codes.
             </p>
             <ul className="space-y-2 text-xs text-slate-700 dark:text-slate-300 pt-2">
               <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-500" /> Custom school crest & header styling</li>

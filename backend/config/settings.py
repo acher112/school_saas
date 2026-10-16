@@ -30,6 +30,8 @@ except ImportError:
 
 # Security settings - Strictly read from environment variables
 DEBUG = os.getenv('DEBUG', 'False').lower() in ('true', '1', 'yes')
+# In production, EXPOSE_DEV_OTP is strictly False. Only enabled in dev/test.
+EXPOSE_DEV_OTP = (DEBUG or bool(os.getenv('PYTEST_CURRENT_TEST'))) and (os.getenv('EXPOSE_DEV_OTP', 'True').lower() in ('true', '1'))
 
 SECRET_KEY = os.getenv('SECRET_KEY')
 if not SECRET_KEY:
@@ -67,6 +69,8 @@ INSTALLED_APPS = [
     # Domain Apps
     'apps.core.apps.CoreConfig',
     'apps.authentication.apps.AuthenticationConfig',
+    'apps.academics.apps.AcademicsConfig',
+    'apps.finance.apps.FinanceConfig',
 ]
 
 AUTH_USER_MODEL = 'authentication.User'

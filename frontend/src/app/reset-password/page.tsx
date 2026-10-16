@@ -207,7 +207,7 @@ function ResetPasswordForm() {
 
       {/* Footer */}
       <footer className="text-center py-4 text-[11px] text-slate-400">
-        School SaaS Multi-Tenant Platform &bull; Secure Auth
+        Optimus Orien Multi-Tenant Platform &bull; Secure Auth
       </footer>
     </div>
   );

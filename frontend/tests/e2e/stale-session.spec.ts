@@ -6,138 +6,165 @@ test.describe('P0 Bug 1: Stale Session Across Schools Reproduction & Isolation',
 
     const timestamp = Date.now();
     const schoolASlug = `alpha${timestamp}`;
-    const schoolAName = `Alpha School ${timestamp}`;
+    const schoolAName = `Alpha Academy ${timestamp}`;
     const schoolBSlug = `beta${timestamp}`;
-    const schoolBName = `Beta School ${timestamp}`;
+    const schoolBName = `Beta Grammar ${timestamp}`;
 
     // -------------------------------------------------------------
-    // Step 1: Register School A
+    // Step 1: Register School A on /register
     // -------------------------------------------------------------
-    await page.goto('/signup');
+    await page.goto('http://localhost:3000/register');
     await page.waitForLoadState('networkidle');
 
-    // Fill Step 1
-    const schoolNameInput = page.locator('input[name="school_name"], input[placeholder*="School"]').first();
-    await schoolNameInput.fill(schoolAName);
+    // Step 1: School Identity
+    await page.fill('input[name="school_name"]', schoolAName);
+    await page.fill('input[name="slug"]', schoolASlug);
+    await page.click('button[type="submit"]:has-text("Continue to Admin Setup")');
 
-    const slugInput = page.locator('input[name="slug"]').first();
-    await slugInput.fill(schoolASlug);
+    // Step 2: Administrator Profile
+    await page.waitForSelector('text=Super-Administrator Account', { timeout: 10000 });
+    await page.fill('input[name="admin_name"]', `Principal ${schoolASlug}`);
+    await page.fill('input[name="admin_username"]', `admin_${schoolASlug}`);
+    await page.fill('input[name="admin_email"]', `admin_${schoolASlug}@gmail.com`);
+    await page.fill('input[name="admin_password"]', 'AlphaSecurePass2026!');
+    await page.fill('input[name="confirm_password"]', 'AlphaSecurePass2026!');
+    await page.click('button[type="submit"]:has-text("Review Details")');
 
-    await page.click('button:has-text("Next Step →")');
+    // Step 3: Review & Launch
+    await page.waitForSelector('text=Confirm School Setup', { timeout: 10000 });
+    await page.click('button:has-text("Send Confirmation Code")');
 
-    // Step 2: Location
-    await page.waitForTimeout(500);
-    await page.click('button:has-text("Next Step →")');
+    // Step 4: Email Verification
+    await page.waitForSelector('text=Enter Confirmation Code', { timeout: 15000 });
+    await page.waitForSelector('#dev-code-box', { timeout: 10000 });
+    await page.click('button[type="submit"]:has-text("Confirm & Launch School")');
 
-    // Step 3: Admin
-    await page.waitForTimeout(500);
-    const emailInput = page.locator('input[type="email"]').first();
-    await emailInput.fill(`admin_${schoolASlug}@test.com`);
-    await page.click('button:has-text("Next Step →")');
-
-    // Step 4: Branding
-    await page.waitForTimeout(500);
-    await page.click('button:has-text("Next Step →")');
-
-    // Step 5: Terms & Submit
-    await page.waitForTimeout(500);
-    await page.click('button:has-text("Submit Registration 🚀")');
-
-    // Check if OTP verification page appears or auto-redirects
-    await page.waitForURL(/.*(dashboard|verify).*/, { timeout: 30000 });
-    if (page.url().includes('verify')) {
-      const query = new URL(page.url()).searchParams;
-      const devCode = query.get('dev_code');
-      if (devCode) {
-        const inputs = page.locator('input[type="text"]');
-        for (let i = 0; i < 6; i++) {
-          await inputs.nth(i).fill(devCode[i]);
-        }
-        await page.click('button:has-text("Verify & Activate School Instance")');
-        await page.waitForURL(/.*dashboard.*/, { timeout: 30000 });
-      }
-    }
-
-    // Verify School A is displayed
-    await page.waitForSelector(`text=${schoolAName}`, { timeout: 15000 });
-    expect(await page.textContent('body')).toContain(schoolASlug);
+    // Success Screen
+    await page.waitForURL(/.*register\/success.*/, { timeout: 15000 });
+    await page.waitForSelector('text=School Provisioned Successfully!');
+    const successContentA = await page.textContent('body');
+    expect(successContentA).toContain(schoolASlug);
+    expect(successContentA).toContain(schoolAName);
 
     // -------------------------------------------------------------
-    // Step 2: Sign Out
+    // Storage Check 1: In-Memory Token Guarantee (No token keys in Web Storage)
+    // -------------------------------------------------------------
+    const storageCheckA = await page.evaluate(() => {
+      return {
+        sessionToken: sessionStorage.getItem('school_access_token'),
+        localToken: localStorage.getItem('school_access_token'),
+        rawSessionToken: sessionStorage.getItem('token'),
+        rawLocalToken: localStorage.getItem('token'),
+      };
+    });
+    expect(storageCheckA.sessionToken).toBeNull();
+    expect(storageCheckA.localToken).toBeNull();
+    expect(storageCheckA.rawSessionToken).toBeNull();
+    expect(storageCheckA.rawLocalToken).toBeNull();
+
+    // -------------------------------------------------------------
+    // Step 2: Navigate to Users & Verify Credential Slip Print
+    // -------------------------------------------------------------
+    await page.goto('http://localhost:3000/dashboard/users');
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('text=Create New User', { timeout: 15000 });
+
+    // Open Add User Modal
+    await page.click('button:has-text("Create New User")');
+    await page.waitForSelector('input[placeholder*="teacher_ali"]', { timeout: 5000 });
+
+    // Fill new teacher
+    const teacherUser = `teacher_${schoolASlug}`;
+    await page.fill('input[placeholder*="teacher_ali"]', teacherUser);
+    await page.fill('input[placeholder="staff@school.edu.pk"]', `${teacherUser}@school.edu.pk`);
+    await page.click('button[type="submit"]:has-text("Create User & Slip")');
+
+    // Verify Printable Credential Slip Modal
+    await page.waitForSelector('#credential-slip-print', { timeout: 10000 });
+    const slipText = await page.locator('#credential-slip-print').textContent();
+    expect(slipText).toContain(schoolAName);
+    expect(slipText).toContain(teacherUser);
+    expect(slipText).toContain('Temporary Password');
+
+    // Close slip modal
+    await page.click('button:has-text("Close")');
+
+    // -------------------------------------------------------------
+    // Step 3: Sign Out
     // -------------------------------------------------------------
     const signOutBtn = page.locator('button:has-text("Sign Out"), button:has-text("لاگ آؤٹ")');
     await expect(signOutBtn).toBeVisible();
     await signOutBtn.click();
-
-    // Confirm redirected to /login
     await page.waitForURL(/.*login.*/, { timeout: 10000 });
 
+    // Storage Check 2: All tenant session data wiped
+    const storageAfterLogout = await page.evaluate(() => {
+      return {
+        sessionToken: sessionStorage.getItem('school_access_token'),
+        tenantSlug: sessionStorage.getItem('school_tenant_slug'),
+        userProfile: sessionStorage.getItem('current_user_profile'),
+      };
+    });
+    expect(storageAfterLogout.sessionToken).toBeNull();
+    expect(storageAfterLogout.tenantSlug).toBeNull();
+    expect(storageAfterLogout.userProfile).toBeNull();
+
     // -------------------------------------------------------------
-    // Step 3: Register School B in the SAME browser window
+    // Step 4: Register School B in the SAME browser window
     // -------------------------------------------------------------
-    await page.goto('/signup');
+    await page.goto('http://localhost:3000/register');
     await page.waitForLoadState('networkidle');
 
-    // Fill Step 1 for School B
-    const schoolNameInputB = page.locator('input[name="school_name"], input[placeholder*="School"]').first();
-    await schoolNameInputB.fill(schoolBName);
+    // Step 1: School Identity
+    await page.fill('input[name="school_name"]', schoolBName);
+    await page.fill('input[name="slug"]', schoolBSlug);
+    await page.click('button[type="submit"]:has-text("Continue to Admin Setup")');
 
-    const slugInputB = page.locator('input[name="slug"]').first();
-    await slugInputB.fill(schoolBSlug);
+    // Step 2: Administrator Profile
+    await page.waitForSelector('text=Super-Administrator Account', { timeout: 10000 });
+    await page.fill('input[name="admin_name"]', `Principal ${schoolBSlug}`);
+    await page.fill('input[name="admin_username"]', `admin_${schoolBSlug}`);
+    await page.fill('input[name="admin_email"]', `admin_${schoolBSlug}@gmail.com`);
+    await page.fill('input[name="admin_password"]', 'BetaSecurePass2026!');
+    await page.fill('input[name="confirm_password"]', 'BetaSecurePass2026!');
+    await page.click('button[type="submit"]:has-text("Review Details")');
 
-    await page.click('button:has-text("Next Step →")');
+    // Step 3: Review & Launch
+    await page.waitForSelector('text=Confirm School Setup', { timeout: 10000 });
+    await page.click('button:has-text("Send Confirmation Code")');
 
-    // Step 2: Location
-    await page.waitForTimeout(500);
-    await page.click('button:has-text("Next Step →")');
+    // Step 4: Email Verification
+    await page.waitForSelector('text=Enter Confirmation Code', { timeout: 15000 });
+    await page.waitForSelector('#dev-code-box', { timeout: 10000 });
+    await page.click('button[type="submit"]:has-text("Confirm & Launch School")');
 
-    // Step 3: Admin
-    await page.waitForTimeout(500);
-    const emailInputB = page.locator('input[type="email"]').first();
-    await emailInputB.fill(`admin_${schoolBSlug}@test.com`);
-    await page.click('button:has-text("Next Step →")');
-
-    // Step 4: Branding
-    await page.waitForTimeout(500);
-    await page.click('button:has-text("Next Step →")');
-
-    // Step 5: Terms & Submit
-    await page.waitForTimeout(500);
-    await page.click('button:has-text("Submit Registration 🚀")');
-
-    await page.waitForURL(/.*(dashboard|verify).*/, { timeout: 30000 });
-    if (page.url().includes('verify')) {
-      const query = new URL(page.url()).searchParams;
-      const devCode = query.get('dev_code');
-      if (devCode) {
-        const inputs = page.locator('input[type="text"]');
-        for (let i = 0; i < 6; i++) {
-          await inputs.nth(i).fill(devCode[i]);
-        }
-        await page.click('button:has-text("Verify & Activate School Instance")');
-        await page.waitForURL(/.*dashboard.*/, { timeout: 30000 });
-      }
-    }
+    // Success Screen
+    await page.waitForURL(/.*register\/success.*/, { timeout: 15000 });
+    await page.waitForSelector('text=School Provisioned Successfully!');
+    const successContentB = await page.textContent('body');
+    expect(successContentB).toContain(schoolBSlug);
+    expect(successContentB).toContain(schoolBName);
 
     // -------------------------------------------------------------
-    // CRITICAL ASSERTIONS:
-    // 1. School B must show School B's name, NOT School A's name
-    // 2. School B must show School B's slug, NOT School A's slug
-    // 3. Navigating to Staff & Users (/dashboard/users) must NOT give 403 / "you are not allowed" / /unauthorized
+    // CRITICAL TENANT ISOLATION ASSERTIONS:
+    // 1. School B must NEVER show School A's name or slug
+    // 2. Navigating to /dashboard/users in School B must NOT return 403
+    // 3. School B's users list must NEVER leak School A's admin or teacher
     // -------------------------------------------------------------
-    const bodyText = await page.textContent('body');
+    expect(successContentB).not.toContain(schoolASlug);
+    expect(successContentB).not.toContain(schoolAName);
 
-    // MUST NOT leak School A
-    expect(bodyText).not.toContain(schoolASlug);
-    expect(bodyText).not.toContain(schoolAName);
+    // Go to School B's Admin Dashboard
+    await page.click('a:has-text("Go to Admin Dashboard")');
+    await page.waitForURL(/.*admin.*/, { timeout: 10000 });
+    await page.waitForLoadState('networkidle');
 
-    // MUST show School B
-    expect(bodyText).toContain(schoolBName);
-    expect(bodyText).toContain(schoolBSlug);
+    const adminBodyText = await page.textContent('body');
+    expect(adminBodyText).not.toContain(schoolASlug);
+    expect(adminBodyText).not.toContain(schoolAName);
 
     // Navigate to /dashboard/users
-    await page.click('a[href="/dashboard/users"]');
-    await page.waitForURL(/.*dashboard\/users.*/, { timeout: 10000 });
+    await page.goto('http://localhost:3000/dashboard/users');
     await page.waitForLoadState('networkidle');
 
     // Assert that we are NOT redirected to /unauthorized
@@ -148,5 +175,11 @@ test.describe('P0 Bug 1: Stale Session Across Schools Reproduction & Isolation',
     expect(usersBodyText).not.toContain('you are not allowed');
     expect(usersBodyText).not.toContain('Failed to load user accounts');
     expect(usersBodyText).not.toContain(schoolASlug);
+    expect(usersBodyText).not.toContain(schoolAName);
+    expect(usersBodyText).not.toContain(`admin_${schoolASlug}`);
+    expect(usersBodyText).not.toContain(teacherUser);
+
+    // Must show School B's administrator
+    expect(usersBodyText).toContain(`admin_${schoolBSlug}`);
   });
 });

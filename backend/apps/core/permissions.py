@@ -54,23 +54,43 @@ class HasRole(BasePermission):
             return True
         return user.role in self.allowed_roles
 
-class IsSchoolAdmin(BasePermission):
-    """Allows access only to school administrator users within their tenant."""
+class IsOwner(BasePermission):
+    """Allows access only to Organization Owner users within their tenant."""
     def has_permission(self, request, view):
         return bool(
             request.user and
             request.user.is_authenticated and
-            (request.user.is_superuser or request.user.role in ('school_admin', 'headmaster'))
+            (request.user.is_superuser or request.user.role == 'owner')
         )
 
-class IsHeadmaster(BasePermission):
-    """Allows access only to headmaster / principal users."""
+class IsOrgAdmin(BasePermission):
+    """Allows access to Organization Owner or Org Admin users."""
     def has_permission(self, request, view):
         return bool(
             request.user and
             request.user.is_authenticated and
-            (request.user.is_superuser or request.user.role in ('headmaster', 'school_admin'))
+            (request.user.is_superuser or request.user.role in ('owner', 'org_admin', 'school_admin'))
         )
+
+class IsSchoolAdmin(BasePermission):
+    """Allows access to school administrator users (Owner, Org Admin, Principal) within their tenant."""
+    def has_permission(self, request, view):
+        return bool(
+            request.user and
+            request.user.is_authenticated and
+            (request.user.is_superuser or request.user.role in ('owner', 'org_admin', 'principal', 'school_admin', 'headmaster'))
+        )
+
+class IsPrincipal(BasePermission):
+    """Allows access to principal or above."""
+    def has_permission(self, request, view):
+        return bool(
+            request.user and
+            request.user.is_authenticated and
+            (request.user.is_superuser or request.user.role in ('principal', 'owner', 'org_admin', 'headmaster', 'school_admin'))
+        )
+
+IsHeadmaster = IsPrincipal
 
 class IsTeacher(BasePermission):
     """Allows access to teacher users."""
@@ -78,7 +98,7 @@ class IsTeacher(BasePermission):
         return bool(
             request.user and
             request.user.is_authenticated and
-            (request.user.is_superuser or request.user.role in ('teacher', 'headmaster', 'school_admin'))
+            (request.user.is_superuser or request.user.role in ('teacher', 'owner', 'org_admin', 'principal', 'headmaster', 'school_admin'))
         )
 
 class IsStudent(BasePermission):

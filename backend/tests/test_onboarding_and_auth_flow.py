@@ -219,7 +219,7 @@ class TestOnboardingAndAuthFlow:
         assert session.name == "2026-2027"
 
         admin_user = User.objects.get(school=school, username="tariq_admin")
-        assert admin_user.role == UserRole.SCHOOL_ADMIN
+        assert admin_user.role in (UserRole.OWNER, UserRole.SCHOOL_ADMIN)
         assert admin_user.check_password("AdminPass123!")
 
         # Verify immediate authenticated request works

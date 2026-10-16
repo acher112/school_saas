@@ -23,17 +23,22 @@ import {
   ChevronDown,
   User,
   Sparkles,
+  History,
 } from "lucide-react";
 
 interface AppShellProps {
   children: React.ReactNode;
-  activeRole?: "admin" | "headmaster" | "teacher" | "accountant" | "student" | "parent";
+  activeRole?: "admin" | "headmaster" | "teacher" | "accountant" | "student" | "parent" | "owner" | "org_admin" | "principal";
   title?: string;
   userName?: string;
   schoolName?: string;
   schoolSlug?: string;
   lang?: Language;
   onLanguageChange?: (lang: Language) => void;
+  isMultiBranch?: boolean;
+  campuses?: Array<{ id: string; name: string; code: string }>;
+  selectedCampusId?: string;
+  onSelectCampus?: (id: string) => void;
 }
 
 export function AppShell({
@@ -41,10 +46,14 @@ export function AppShell({
   activeRole = "admin",
   title,
   userName = "Admin Account",
-  schoolName = "SchoolSaaS Cloud",
+  schoolName = "Optimus Orien",
   schoolSlug = "portal",
   lang: controlledLang,
   onLanguageChange,
+  isMultiBranch = false,
+  campuses = [],
+  selectedCampusId,
+  onSelectCampus,
 }: AppShellProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -56,7 +65,7 @@ export function AppShell({
     if (!controlledLang) {
       try {
         const saved = localStorage.getItem("app_lang") as Language;
-        if (saved && (saved === "en" || saved === "ur" || saved === "ar")) {
+        if (saved && ["en", "ur", "ar", "es", "fr"].includes(saved)) {
           setInternalLang(saved);
         }
       } catch (e) {}
@@ -65,16 +74,16 @@ export function AppShell({
 
   const lang = controlledLang || internalLang;
   const isRTL = lang === "ur" || lang === "ar";
-  const t = translations[lang];
+  const t = translations[lang] || translations.en;
 
   const handleLanguageCycle = () => {
-    let nextLang: Language = "en";
-    if (lang === "en") nextLang = "ur";
-    else if (lang === "ur") nextLang = "ar";
-    else nextLang = "en";
+    const list: Language[] = ["en", "ur", "ar", "es", "fr"];
+    const currentIndex = list.indexOf(lang);
+    const nextLang = list[(currentIndex + 1) % list.length];
 
     try {
       localStorage.setItem("app_lang", nextLang);
+      window.dispatchEvent(new CustomEvent("app_lang_changed", { detail: nextLang }));
     } catch (e) {}
 
     if (onLanguageChange) {
@@ -96,12 +105,15 @@ export function AppShell({
 
   const navItems = [
     { href: "/admin", label: t.admin.navDashboard, icon: LayoutDashboard },
+    { href: "/admin/campuses", label: t.admin.navCampuses || "Campuses & Branches", icon: Building2 },
+    { href: "/admin/academics", label: "Academic Structure", icon: GraduationCap },
+    { href: "/admin/people", label: "People & Accounts", icon: Users },
+    { href: "/admin/roles-permissions", label: "Roles & Permissions", icon: ShieldCheck },
+    { href: "/admin/audit-logs", label: lang === "ur" ? "سیکیورٹی آڈٹ لاگ" : "Security Audit Logs", icon: History },
     { href: "/headmaster", label: t.admin.navAcademics, icon: GraduationCap, hasSubmenu: true },
     { href: "/admin/students", label: t.admin.navStudents, icon: Users },
     { href: "/accountant", label: t.admin.navFinance, icon: CreditCard },
     { href: "/teacher", label: t.admin.navAttendance, icon: CalendarCheck },
-    { href: "/admin/campuses", label: t.admin.navCampuses, icon: Building2 },
-    { href: "/dashboard/permissions", label: t.admin.navPermissions, icon: ShieldCheck },
     { href: "/dashboard/settings", label: t.admin.navSettings, icon: Settings },
   ];
 
@@ -154,10 +166,10 @@ export function AppShell({
               </div>
               <div className="flex flex-col">
                 <span className="font-extrabold text-base tracking-tight text-white">
-                  SchoolSaaS <span className="text-indigo-400">Cloud</span>
+                  Optimus <span className="text-indigo-400">Orien</span>
                 </span>
                 <span className="text-[10px] text-slate-400 font-mono">
-                  {schoolSlug}.schoolsaas.cloud
+                  {schoolSlug}.optimusorien.cloud
                 </span>
               </div>
             </Link>
@@ -231,6 +243,24 @@ export function AppShell({
               <span className="text-xs text-slate-400 hidden sm:inline">
                 {t.admin.welcomeBack}, {userName.split(" ")[0]}!
               </span>
+              {isMultiBranch && campuses && campuses.length > 0 && (
+                <div className="ml-2 hidden md:flex items-center gap-1.5">
+                  <span className="text-slate-600">|</span>
+                  <Building2 className="w-3.5 h-3.5 text-indigo-400" />
+                  <select
+                    value={selectedCampusId || ""}
+                    onChange={(e) => onSelectCampus && onSelectCampus(e.target.value)}
+                    className="bg-[#161e31] border border-slate-700 text-xs font-semibold text-slate-200 rounded-lg px-2 py-1 outline-none focus:border-indigo-500 cursor-pointer"
+                  >
+                    <option value="">All Campuses ({campuses.length})</option>
+                    {campuses.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name} ({c.code})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
 
             {/* Search and Right action controls */}
@@ -267,7 +297,7 @@ export function AppShell({
                         <div className="text-[10px] text-slate-500">Real-time updates ago</div>
                       </div>
                       <div className="p-2 rounded-xl bg-slate-800/60">
-                        <div className="font-semibold text-white">Subdomain 'lhe.schoolsaas.cloud' active</div>
+                        <div className="font-semibold text-white">Subdomain 'lhe.optimusorien.cloud' active</div>
                         <div className="text-[10px] text-slate-500">Real-time updates ago</div>
                       </div>
                     </div>
@@ -279,9 +309,11 @@ export function AppShell({
               <button
                 onClick={handleLanguageCycle}
                 className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#161e31] border border-slate-700/80 text-slate-300 hover:text-white text-xs font-semibold transition"
-                title="Switch Language (English / اردو / العربية)"
+                title="Switch Language (English / اردو / العربية / Español / Français)"
               >
-                <span>{lang === "en" ? "English" : lang === "ur" ? "اردو" : "العربية"}</span>
+                <span>
+                  {lang === "en" ? "English" : lang === "ur" ? "اردو" : lang === "ar" ? "العربية" : lang === "es" ? "Español" : "Français"}
+                </span>
                 <span className="text-[10px] px-1 py-0.2 rounded bg-indigo-500/20 text-indigo-400 font-mono">
                   {isRTL ? "RTL" : "LTR"}
                 </span>

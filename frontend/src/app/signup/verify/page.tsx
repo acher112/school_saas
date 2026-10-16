@@ -187,7 +187,7 @@ function VerifyEmailContent() {
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-slate-500">Subdomain:</span>
-                <span className="font-mono text-slate-700 dark:text-slate-300">{successResult.school.slug}.schoolsaas.local</span>
+                <span className="font-mono text-slate-700 dark:text-slate-300">{successResult.school.slug}.optimusorien.local</span>
               </div>
             </div>
             <p className="text-xs text-slate-500">
@@ -277,7 +277,7 @@ function VerifyEmailContent() {
       </div>
 
       <div className="text-center text-xs text-slate-400 py-4">
-        Need help? Contact <span className="font-medium">support@schoolsaas.com</span>
+        Need help? Contact <span className="font-medium">support@optimusorien.com</span>
       </div>
     </div>
   );

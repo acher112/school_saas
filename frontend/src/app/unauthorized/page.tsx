@@ -34,7 +34,7 @@ export default function UnauthorizedPage() {
       className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col justify-between p-4 sm:p-6"
     >
       <header className="flex justify-between items-center max-w-xl w-full mx-auto pb-4">
-        <div className="font-extrabold text-sm text-blue-600">School SaaS</div>
+        <div className="font-extrabold text-sm text-blue-600">Optimus Orien</div>
         <div className="flex items-center space-x-2 rtl:space-x-reverse">
           <LanguageToggle currentLang={lang} onToggle={setLang} />
           <ThemeToggle />
@@ -89,7 +89,7 @@ export default function UnauthorizedPage() {
       </main>
 
       <footer className="text-center py-4 text-[11px] text-slate-400">
-        School SaaS Multi-Tenant Platform &bull; Role Based Access Control
+        Optimus Orien Multi-Tenant Platform &bull; Role Based Access Control
       </footer>
     </div>
   );

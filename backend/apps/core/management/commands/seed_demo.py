@@ -18,8 +18,9 @@ from apps.core.models import (
 from apps.authentication.models import User, UserRole
 
 DEFAULT_ROLES = [
-    (UserRole.SCHOOL_ADMIN, True, True, True, True, True, True, True),
-    (UserRole.HEADMASTER, True, True, True, True, False, True, True),
+    (UserRole.OWNER, True, True, True, True, True, True, True),
+    (UserRole.ORG_ADMIN, True, True, True, True, True, True, True),
+    (UserRole.PRINCIPAL, True, True, True, True, False, True, True),
     (UserRole.TEACHER, False, True, True, True, False, False, False),
     (UserRole.ACCOUNTANT, False, False, False, False, True, True, False),
     (UserRole.STUDENT, False, False, False, False, False, False, False),
@@ -67,10 +68,13 @@ class Command(BaseCommand):
                 "campus_name": "Gulberg Main Campus",
                 "campus_code": "MAIN",
                 "users": [
-                    ("admin_lgc", "admin@lgc.edu.pk", UserRole.SCHOOL_ADMIN, "Tariq", "Mahmood"),
-                    ("principal_lgc", "principal@lgc.edu.pk", UserRole.HEADMASTER, "Ayesha", "Khan"),
+                    ("owner_lgc", "owner@lgc.edu.pk", UserRole.OWNER, "Tariq", "Mahmood"),
+                    ("admin_lgc", "admin@lgc.edu.pk", UserRole.ORG_ADMIN, "Kamran", "Akmal"),
+                    ("principal_lgc", "principal@lgc.edu.pk", UserRole.PRINCIPAL, "Ayesha", "Khan"),
                     ("teacher_lgc", "teacher@lgc.edu.pk", UserRole.TEACHER, "Bilal", "Ahmed"),
                     ("accountant_lgc", "accountant@lgc.edu.pk", UserRole.ACCOUNTANT, "Farhan", "Raza"),
+                    ("student_lgc", "student@lgc.edu.pk", UserRole.STUDENT, "Zayd", "Ali"),
+                    ("parent_lgc", "parent@lgc.edu.pk", UserRole.PARENT, "Hassan", "Ali"),
                 ],
                 "announcements": [
                     ("Fall 2026 Orientation", "All faculty and student orientations commence on Monday."),
@@ -88,7 +92,8 @@ class Command(BaseCommand):
                 "campus_name": "F-8 Capital Campus",
                 "campus_code": "MAIN",
                 "users": [
-                    ("admin_bpa", "admin@bpa.edu.pk", UserRole.SCHOOL_ADMIN, "Nasir", "Ali"),
+                    ("owner_bpa", "owner@bpa.edu.pk", UserRole.OWNER, "Nasir", "Ali"),
+                    ("admin_bpa", "admin@bpa.edu.pk", UserRole.ORG_ADMIN, "Usman", "Ghani"),
                     ("teacher_bpa", "teacher@bpa.edu.pk", UserRole.TEACHER, "Sana", "Malik"),
                 ],
                 "announcements": [

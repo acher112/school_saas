@@ -1,7 +1,8 @@
 """
 URL routing for core tenancy and school onboarding endpoints.
 """
-from django.urls import path
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
 from apps.core.views import (
     HealthCheckView,
     SchoolSignupView,
@@ -14,6 +15,10 @@ from apps.core.views import (
     SchoolAnnouncementListCreateView,
     LoadSampleDataView,
     ClearSampleDataView,
+    CampusViewSet,
+    AdminDashboardStatsView,
+    PermissionMatrixView,
+    BulkUserImportView,
 )
 from apps.core.views_signup import (
     CheckSlugAvailabilityView,
@@ -22,6 +27,9 @@ from apps.core.views_signup import (
     ResendVerificationCodeView,
     ResetTestDataView,
 )
+
+router = DefaultRouter()
+router.register(r'campuses', CampusViewSet, basename='core-campuses')
 
 urlpatterns = [
     path('health/', HealthCheckView.as_view(), name='core-health'),
@@ -34,6 +42,8 @@ urlpatterns = [
     path('check-slug/', CheckSlugAvailabilityView.as_view(), name='core-check-slug'),
     path('schools/check-slug/', CheckSlugAvailabilityView.as_view(), name='core-schools-check-slug'),
     path('school/', CurrentSchoolView.as_view(), name='core-current-school'),
+    path('admin/dashboard-stats/', AdminDashboardStatsView.as_view(), name='core-admin-dashboard-stats'),
+    path('permissions/matrix/', PermissionMatrixView.as_view(), name='core-permissions-matrix'),
     path('sessions/', AcademicSessionListCreateView.as_view(), name='core-sessions-list-create'),
     path('sessions/<uuid:pk>/set-current/', SetCurrentSessionView.as_view(), name='core-sessions-set-current'),
     path('role-permissions/', SchoolRolePermissionListView.as_view(), name='core-role-permissions-list'),
@@ -42,4 +52,5 @@ urlpatterns = [
     path('announcements/', SchoolAnnouncementListCreateView.as_view(), name='core-announcements'),
     path('load-sample-data/', LoadSampleDataView.as_view(), name='core-load-sample-data'),
     path('clear-sample-data/', ClearSampleDataView.as_view(), name='core-clear-sample-data'),
-]
+    path('bulk-import/', BulkUserImportView.as_view(), name='core-bulk-import'),
+] + router.urls

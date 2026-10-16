@@ -93,13 +93,20 @@ def django_db_setup(
                     cur.execute(f'DROP DATABASE IF EXISTS "{dbname}";')
                     cur.execute(f'CREATE DATABASE "{dbname}" OWNER school_saas_owner;')
 
-            # Run migrations as table owner
+            # Run migrations and setup databases as table owner
             settings.DATABASES['default']['USER'] = 'school_saas_owner'
             settings.DATABASES['default']['PASSWORD'] = owner_pwd
             connections.close_all()
 
             with django_db_blocker.unblock():
                 call_command('migrate', verbosity=0)
+
+            with django_db_blocker.unblock():
+                db_cfg = setup_databases(
+                    verbosity=request.config.option.verbose,
+                    interactive=False,
+                    keepdb=True,
+                )
 
             # Apply runtime grants for app and platform roles
             with psycopg.connect(
@@ -123,12 +130,6 @@ def django_db_setup(
             settings.DATABASES['default']['PASSWORD'] = app_pwd
             connections.close_all()
 
-        with django_db_blocker.unblock():
-            db_cfg = setup_databases(
-                verbosity=request.config.option.verbose,
-                interactive=False,
-                keepdb=True,
-            )
         yield
         connections.close_all()
     else:

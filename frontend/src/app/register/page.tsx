@@ -36,10 +36,24 @@ const pageTranslations = {
     schoolNamePlaceholder: "e.g. Lahore Grammar Academy",
     slugLabel: "Subdomain Slug (Unique Identifier)",
     slugPlaceholder: "lga-campus",
-    slugSuffix: ".schoolsaas.cloud",
+    slugSuffix: ".optimusorien.cloud",
     slugChecking: "Checking subdomain availability...",
     slugAvailable: "Subdomain is available",
     slugTaken: "Subdomain is already taken or reserved",
+    structureLabel: "Branch & Campus Network",
+    singleCampusLabel: "Single Campus",
+    singleCampusDesc: "Operates from a single physical campus or building.",
+    multiBranchLabel: "Multi-Branch Network",
+    multiBranchDesc: "Operates multiple branches, campuses or regional facilities.",
+    branchesHeading: "Branch Campuses",
+    branchNameLabel: "Branch Name",
+    branchCityLabel: "City",
+    branchCodeLabel: "Branch Code",
+    branchNamePlaceholder: "e.g. Clifton Campus",
+    branchCityPlaceholder: "e.g. Karachi",
+    branchCodePlaceholder: "e.g. CLF",
+    addBranchButton: "+ Add Campus Branch",
+    removeBranch: "Remove",
     continueAdmin: "Continue to Admin Setup",
     adminTitle: "Super-Administrator Account",
     adminSubtitle: "This master account controls all staff permissions, billing challans, and academic terms.",
@@ -98,10 +112,24 @@ const pageTranslations = {
     schoolNamePlaceholder: "مثلاً: لاہور گرائمر اکیڈمی",
     slugLabel: "سب ڈومین سلگ (مخصوص شناخت کنندہ)",
     slugPlaceholder: "lga-campus",
-    slugSuffix: ".schoolsaas.cloud",
+    slugSuffix: ".optimusorien.cloud",
     slugChecking: "سب ڈومین کی دستیابی چیک کی جا رہی ہے...",
     slugAvailable: "سب ڈومین دستیاب ہے",
     slugTaken: "یہ سب ڈومین پہلے سے کسی اور کے استعمال میں ہے",
+    structureLabel: "برانچ اور کیمپس کا ڈھانچہ",
+    singleCampusLabel: "اکیلا کیمپس (Single Campus)",
+    singleCampusDesc: "صرف ایک مرکزی اسکول عمارت یا کیمپس کے لیے۔",
+    multiBranchLabel: "کثیر شاخہ نیٹ ورک (Multi-Branch)",
+    multiBranchDesc: "مختلف شہروں یا علاقوں میں متعدد کیمپسز اور برانچز۔",
+    branchesHeading: "اسکول کی شاخیں / کیمپسز",
+    branchNameLabel: "برانچ کا نام",
+    branchCityLabel: "شہر",
+    branchCodeLabel: "برانچ کوڈ",
+    branchNamePlaceholder: "مثلاً: گلبرگ کیمپس",
+    branchCityPlaceholder: "مثلاً: لاہور",
+    branchCodePlaceholder: "مثلاً: GLB",
+    addBranchButton: "+ مزید برانچ شامل کریں",
+    removeBranch: "حذف کریں",
     continueAdmin: "ایڈمنسٹریٹر سیٹ اپ پر جائیں",
     adminTitle: "سپر ایڈمنسٹریٹر اکاؤنٹ",
     adminSubtitle: "یہ مرکزی اکاؤنٹ تمام اساتذہ، عملہ، فیس چالان اور امتحانی نتائج کا انتظام سنبھالے گا۔",
@@ -160,10 +188,24 @@ const pageTranslations = {
     schoolNamePlaceholder: "مثلاً: أكاديمية النور الدولية",
     slugLabel: "المعرف الفرعي (النطاق الخاص)",
     slugPlaceholder: "alnoor-academy",
-    slugSuffix: ".schoolsaas.cloud",
+    slugSuffix: ".optimusorien.cloud",
     slugChecking: "جاري التحقق من توفر النطاق الفرعي...",
     slugAvailable: "النطاق الفرعي متاح للاستخدام",
     slugTaken: "هذا النطاق الفرعي محجوز أو مستخدم مسبقاً",
+    structureLabel: "هيكل الفروع والحرم المدرسي",
+    singleCampusLabel: "حرم مدرسي موحد",
+    singleCampusDesc: "إدارة مدرسة واحدة بموقع أو مبنى واحد.",
+    multiBranchLabel: "شبكة فروع متعددة",
+    multiBranchDesc: "إدارة عدة فروع ومواقع تعليمية مشتركة.",
+    branchesHeading: "فروع المدرسة",
+    branchNameLabel: "اسم الفرع",
+    branchCityLabel: "المدينة",
+    branchCodeLabel: "رمز الفرع",
+    branchNamePlaceholder: "مثلاً: فرع الروضة",
+    branchCityPlaceholder: "مثلاً: الرياض",
+    branchCodePlaceholder: "مثلاً: RYD",
+    addBranchButton: "+ إضافة فرع جديد",
+    removeBranch: "حذف",
     continueAdmin: "المتابعة لإعداد المشرف",
     adminTitle: "حساب المشرف العام (Super-Admin)",
     adminSubtitle: "يتمتع هذا الحساب بالصلاحيات الكاملة لإدارة الكادر، الفواتير، والسنوات الدراسية.",
@@ -221,7 +263,7 @@ export default function RegisterWizardPage() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [errorStep, setErrorStep] = useState<number | null>(null);
 
-  const t = pageTranslations[lang] || pageTranslations.en;
+  const t = (pageTranslations as Record<string, any>)[lang] || pageTranslations.en;
   const isRTL = lang === "ur" || lang === "ar";
 
   const [formData, setFormData] = useState({
@@ -234,6 +276,37 @@ export default function RegisterWizardPage() {
     confirm_password: "",
   });
 
+  // Multi-branch network state
+  const [hasMultipleBranches, setHasMultipleBranches] = useState<boolean>(false);
+  const [branches, setBranches] = useState<Array<{ name: string; city: string; code: string }>>([
+    { name: "Main Campus", city: "Lahore", code: "MAIN" },
+    { name: "City Branch", city: "Lahore", code: "BR2" },
+  ]);
+
+  const handleBranchChange = (index: number, field: string, value: string) => {
+    setBranches((prev) => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
+  };
+
+  const handleAddBranch = () => {
+    setBranches((prev) => [
+      ...prev,
+      {
+        name: `Campus Branch ${prev.length + 1}`,
+        city: formData.school_name ? "Lahore" : "",
+        code: `BR${prev.length + 1}`,
+      },
+    ]);
+  };
+
+  const handleRemoveBranch = (index: number) => {
+    if (branches.length <= 1) return;
+    setBranches((prev) => prev.filter((_, i) => i !== index));
+  };
+
   // Slug live check state
   const [slugStatus, setSlugStatus] = useState<"idle" | "checking" | "available" | "taken">("idle");
   const slugDebounceRef = useRef<any>(null);
@@ -242,6 +315,7 @@ export default function RegisterWizardPage() {
   const [draftId, setDraftId] = useState("");
   const [maskedEmail, setMaskedEmail] = useState("");
   const [confirmationCode, setConfirmationCode] = useState("");
+  const [devCode, setDevCode] = useState("");
   const [resendCooldown, setResendCooldown] = useState(0);
 
   // Test record reset states
@@ -449,6 +523,8 @@ export default function RegisterWizardPage() {
       const payload = {
         school_name: formData.school_name,
         slug: formData.slug,
+        has_multiple_branches: hasMultipleBranches,
+        branches: hasMultipleBranches ? branches : [],
         contact_email: formData.admin_email,
         contact_phone: "03001234567",
         city: "Lahore",
@@ -471,6 +547,10 @@ export default function RegisterWizardPage() {
       // Email verification confirmation card is MANDATORY
       if (res?.draft_id) {
         setDraftId(res.draft_id);
+        if (res.dev_code) {
+          setDevCode(res.dev_code);
+          setConfirmationCode(res.dev_code);
+        }
         setMaskedEmail(res.masked_email || maskEmailAddress(formData.admin_email));
         setStep(4);
         setResendCooldown(60);
@@ -607,30 +687,10 @@ export default function RegisterWizardPage() {
           <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 text-white flex items-center justify-center shadow-md">
             <GraduationCap className="w-6 h-6" />
           </div>
-          <div>
-            <div className="font-extrabold text-base tracking-tight">SchoolSaaS Cloud</div>
-            <div className="text-[10px] text-slate-400 font-mono">Multi-Tenant Platform</div>
-          </div>
+          <span className="font-extrabold text-base tracking-tight">Optimus Orien</span>
         </Link>
 
         <div className="flex items-center gap-2.5">
-          <button
-            type="button"
-            onClick={() => {
-              if (
-                window.confirm(
-                  "Wipe all previous test registrations from the database? This will free up all your test emails and subdomain slugs so you can register again."
-                )
-              ) {
-                handleResetTestData({ clear_all: true });
-              }
-            }}
-            disabled={resettingData}
-            className="text-xs font-semibold text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 border border-rose-200 dark:border-rose-900/50 bg-rose-50/50 dark:bg-rose-950/20 px-2.5 py-1 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
-            title="Clear all test registrations to reuse your emails"
-          >
-            {resettingData ? "Cleaning..." : "🧹 Clear Test Records"}
-          </button>
           <LanguageToggle currentLang={lang} onToggle={setLang} />
           <ThemeToggle />
           <Link
@@ -804,16 +864,140 @@ export default function RegisterWizardPage() {
                     <p className="text-xs text-rose-600 dark:text-rose-400 font-semibold">
                       ⚠️ {fieldErrors.slug}
                     </p>
-                    {fieldErrors.slug.toLowerCase().includes("already registered") && (
+                  </div>
+                )}
+              </div>
+
+              {/* Institutional Structure Selector (Single vs Multi-Branch) */}
+              <div className="pt-2 space-y-3">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                  {t.structureLabel || "Branch & Campus Network"}
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setHasMultipleBranches(false)}
+                    className={`p-3.5 rounded-2xl border text-left rtl:text-right transition flex flex-col justify-between ${
+                      !hasMultipleBranches
+                        ? "border-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/30 ring-2 ring-indigo-500/20"
+                        : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-bold text-xs text-slate-900 dark:text-white">
+                        {t.singleCampusLabel || "Single Campus"}
+                      </span>
+                      {!hasMultipleBranches && (
+                        <CheckCircle2 className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
+                      {t.singleCampusDesc || "Operates from a single physical campus or building."}
+                    </p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setHasMultipleBranches(true)}
+                    className={`p-3.5 rounded-2xl border text-left rtl:text-right transition flex flex-col justify-between ${
+                      hasMultipleBranches
+                        ? "border-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/30 ring-2 ring-indigo-500/20"
+                        : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-bold text-xs text-slate-900 dark:text-white">
+                        {t.multiBranchLabel || "Multi-Branch Network"}
+                      </span>
+                      {hasMultipleBranches && (
+                        <CheckCircle2 className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
+                      {t.multiBranchDesc || "Operates multiple branches, campuses or regional facilities."}
+                    </p>
+                  </button>
+                </div>
+
+                {/* Dynamic Branch Inputs when Multi-Branch is selected */}
+                {hasMultipleBranches && (
+                  <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#111827] border border-slate-200 dark:border-slate-700 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                        {t.branchesHeading || "Branch Campuses"} ({branches.length})
+                      </span>
                       <button
                         type="button"
-                        onClick={() => handleResetTestData({ slug: formData.slug })}
-                        disabled={resettingData}
-                        className="mt-1.5 inline-flex items-center gap-1.5 text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-bold underline cursor-pointer disabled:opacity-50"
+                        onClick={handleAddBranch}
+                        className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
                       >
-                        {resettingData ? "Clearing old slug..." : "🔄 Clear old test school with this slug and retry"}
+                        {t.addBranchButton || "+ Add Campus Branch"}
                       </button>
-                    )}
+                    </div>
+
+                    <div className="space-y-2.5">
+                      {branches.map((b, idx) => (
+                        <div
+                          key={idx}
+                          className="p-2.5 rounded-xl bg-white dark:bg-[#161e31] border border-slate-200 dark:border-slate-700 grid grid-cols-12 gap-2 items-center"
+                        >
+                          <div className="col-span-5">
+                            <label className="block text-[10px] font-bold text-slate-500 mb-0.5">
+                              {t.branchNameLabel || "Branch Name"} {idx === 0 ? "(Main)" : ""}
+                            </label>
+                            <input
+                              type="text"
+                              value={b.name}
+                              onChange={(e) => handleBranchChange(idx, "name", e.target.value)}
+                              placeholder={t.branchNamePlaceholder || "Campus Name"}
+                              required
+                              className="w-full px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-[#111827] border border-slate-200 dark:border-slate-700 text-xs focus:outline-none focus:border-indigo-600"
+                            />
+                          </div>
+
+                          <div className="col-span-4">
+                            <label className="block text-[10px] font-bold text-slate-500 mb-0.5">
+                              {t.branchCityLabel || "City"}
+                            </label>
+                            <input
+                              type="text"
+                              value={b.city}
+                              onChange={(e) => handleBranchChange(idx, "city", e.target.value)}
+                              placeholder={t.branchCityPlaceholder || "City"}
+                              required
+                              className="w-full px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-[#111827] border border-slate-200 dark:border-slate-700 text-xs focus:outline-none focus:border-indigo-600"
+                            />
+                          </div>
+
+                          <div className="col-span-2">
+                            <label className="block text-[10px] font-bold text-slate-500 mb-0.5">
+                              {t.branchCodeLabel || "Code"}
+                            </label>
+                            <input
+                              type="text"
+                              value={b.code}
+                              onChange={(e) => handleBranchChange(idx, "code", e.target.value.toUpperCase())}
+                              placeholder="CODE"
+                              required
+                              className="w-full px-2 py-1.5 rounded-lg bg-slate-50 dark:bg-[#111827] border border-slate-200 dark:border-slate-700 text-xs font-mono uppercase focus:outline-none focus:border-indigo-600"
+                            />
+                          </div>
+
+                          <div className="col-span-1 flex justify-center pt-3">
+                            {branches.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveBranch(idx)}
+                                title={t.removeBranch || "Remove"}
+                                className="text-rose-500 hover:text-rose-700 font-bold text-sm"
+                              >
+                                &times;
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
@@ -929,16 +1113,6 @@ export default function RegisterWizardPage() {
                     <p className="text-xs text-rose-600 dark:text-rose-400 font-semibold">
                       ⚠️ {fieldErrors.admin_email}
                     </p>
-                    {fieldErrors.admin_email.toLowerCase().includes("already registered") && (
-                      <button
-                        type="button"
-                        onClick={() => handleResetTestData({ email: formData.admin_email })}
-                        disabled={resettingData}
-                        className="mt-1.5 inline-flex items-center gap-1.5 text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-bold underline cursor-pointer disabled:opacity-50"
-                      >
-                        {resettingData ? "Clearing old test record..." : "🔄 Clear old test record for this email and retry"}
-                      </button>
-                    )}
                   </div>
                 )}
 
@@ -1097,6 +1271,33 @@ export default function RegisterWizardPage() {
                     </button>
                   </div>
                 </div>
+                <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-2">
+                  <span className="text-slate-500">{t.structureLabel || "Campus Structure"}:</span>
+                  <div className="flex items-center gap-2">
+                    <strong className="text-slate-900 dark:text-white">
+                      {hasMultipleBranches ? `${t.multiBranchLabel} (${branches.length} Campuses)` : t.singleCampusLabel}
+                    </strong>
+                    <button
+                      type="button"
+                      onClick={() => setStep(1)}
+                      className="text-[10px] text-slate-400 hover:text-indigo-600 underline"
+                    >
+                      Edit
+                    </button>
+                  </div>
+                </div>
+                {hasMultipleBranches && (
+                  <div className="border-b border-slate-200 dark:border-slate-800 pb-2 space-y-1">
+                    <span className="text-slate-500 block text-[11px]">{t.branchesHeading || "Branches"}:</span>
+                    <div className="space-y-1 pl-2 rtl:pr-2">
+                      {branches.map((b, i) => (
+                        <div key={i} className="text-slate-700 dark:text-slate-300 font-medium text-[11px]">
+                          • {b.name} ({b.city} • <span className="font-mono text-indigo-500">{b.code}</span>)
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <div className="flex justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
                   <span className="text-slate-500">{t.adminUsernameLabel}:</span>
                   <div className="flex items-center gap-2">
@@ -1176,6 +1377,13 @@ export default function RegisterWizardPage() {
                   </strong>
                 </p>
               </div>
+
+              {devCode && (
+                <div id="dev-code-box" className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl text-xs text-amber-800 dark:text-amber-200 flex items-center justify-between">
+                  <span><strong>{t.devHelper}</strong> <span className="font-mono text-sm font-bold text-amber-900 dark:text-amber-100">{devCode}</span></span>
+                  <span className="text-[10px] text-amber-600 dark:text-amber-400 font-mono">{t.devHelperSub}</span>
+                </div>
+              )}
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">

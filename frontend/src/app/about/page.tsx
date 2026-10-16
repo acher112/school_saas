@@ -29,7 +29,7 @@ export default function AboutPage() {
 
         <div className="p-8 rounded-3xl bg-white dark:bg-[#161e31] border border-slate-200 dark:border-slate-800 space-y-6 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
           <p>
-            SchoolSaaS Cloud was developed to address the systemic challenges faced by Pakistani educational administrators: reliance on fragmented Excel spreadsheets, manual fee counter queues, paper attendance registers prone to manipulation, and legacy desktop software lacking data security.
+            Optimus Orien was developed to address the systemic challenges faced by Pakistani educational administrators: reliance on fragmented Excel spreadsheets, manual fee counter queues, paper attendance registers prone to manipulation, and legacy desktop software lacking data security.
           </p>
           <p>
             Our core architecture guarantees strict <strong>Row-Level Security (RLS)</strong> at the PostgreSQL engine level, ensuring that school records, student health profiles, examination rankings, and financial transactions are physically isolated between tenant institutions.

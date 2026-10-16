@@ -9,21 +9,30 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.utils import timezone
 
+from django.core.exceptions import ValidationError
 from apps.core.models import BaseTenantModel
 
 class UserRole(models.TextChoices):
-    SUPERADMIN = "superadmin", "Platform Superadmin"
-    SCHOOL_ADMIN = "school_admin", "School Admin"
-    HEADMASTER = "headmaster", "Headmaster / Principal"
+    PLATFORM_ADMIN = "platform_admin", "Platform Admin"
+    OWNER = "owner", "Organization Owner"
+    ORG_ADMIN = "org_admin", "Organization Admin"
+    PRINCIPAL = "principal", "Principal"
     TEACHER = "teacher", "Teacher"
     ACCOUNTANT = "accountant", "Accountant / Finance Staff"
     STUDENT = "student", "Student"
     PARENT = "parent", "Parent / Guardian"
+    GOVERNMENT = "government", "Government / Oversight Placeholder"
+
+# Backward compatibility aliases
+UserRole.SUPERADMIN = UserRole.PLATFORM_ADMIN
+UserRole.SCHOOL_ADMIN = UserRole.ORG_ADMIN
+UserRole.HEADMASTER = UserRole.PRINCIPAL
+
 
 class User(AbstractUser):
     """
     Primary user model across the platform.
-    Associated with a School tenant (null for global platform superadmins).
+    Associated with a School tenant (null for global platform admins).
     """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     school = models.ForeignKey(
@@ -34,6 +43,20 @@ class User(AbstractUser):
         related_name="users",
         db_index=True,
         help_text="The school tenant this user belongs to (null for landlord staff)."
+    )
+    primary_campus = models.ForeignKey(
+        'core.Campus',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="primary_users",
+        help_text="Primary branch/campus affiliation."
+    )
+    assigned_campuses = models.ManyToManyField(
+        'core.Campus',
+        blank=True,
+        related_name="assigned_users",
+        help_text="Branches this user has operational access to (e.g. multi-campus teachers)."
     )
     username = models.CharField(
         max_length=150,
@@ -49,7 +72,7 @@ class User(AbstractUser):
     role = models.CharField(
         max_length=32,
         choices=UserRole.choices,
-        default=UserRole.SCHOOL_ADMIN,
+        default=UserRole.ORG_ADMIN,
         db_index=True,
         help_text="Primary system role defining default capabilities."
     )
@@ -68,6 +91,28 @@ class User(AbstractUser):
         help_text="Requires user to set a new password on their first login."
     )
     temporary_password_created_at = models.DateTimeField(null=True, blank=True)
+
+    def is_sole_owner(self) -> bool:
+        """Check if this user is the only active owner remaining in their school tenant."""
+        if self.role != UserRole.OWNER or not self.school_id:
+            return False
+        return User.objects.filter(
+            school_id=self.school_id, role=UserRole.OWNER, is_active=True
+        ).exclude(pk=self.pk).count() == 0
+
+    def clean(self):
+        super().clean()
+        if self.pk:
+            orig = User.objects.filter(pk=self.pk).values('role', 'is_active', 'school_id').first()
+            if orig and orig.get('school_id'):
+                was_owner = orig['role'] == UserRole.OWNER and orig['is_active']
+                now_demoted_or_deactivated = (self.role != UserRole.OWNER) or (not self.is_active)
+                if was_owner and now_demoted_or_deactivated:
+                    other_owners = User.objects.filter(
+                        school_id=orig['school_id'], role=UserRole.OWNER, is_active=True
+                    ).exclude(pk=self.pk).exists()
+                    if not other_owners:
+                        raise ValidationError("Security violation: Cannot deactivate or demote the sole organization owner.")
 
     class Meta:
         ordering = ['username']
@@ -117,6 +162,8 @@ class ParentStudentRelation(BaseTenantModel):
             ("guardian", "Guardian")
         ]
     )
+    is_primary = models.BooleanField(default=True, help_text="Designates primary point of contact.")
+    receives_alerts = models.BooleanField(default=True, help_text="Receives academic and attendance notifications.")
 
     class Meta:
         unique_together = ('school', 'parent', 'student')
@@ -125,6 +172,70 @@ class ParentStudentRelation(BaseTenantModel):
 
     def __str__(self):
         return f"{self.parent.username} -> {self.student.username} ({self.relationship})"
+
+
+# Spec Alias
+GuardianLink = ParentStudentRelation
+
+
+class StudentProfile(BaseTenantModel):
+    """
+    Tenant-scoped student profile.
+    Separated from the minimal User table to ensure 100% PostgreSQL Row-Level Security isolation.
+    """
+    GENDER_CHOICES = [("male", "Male"), ("female", "Female"), ("other", "Other")]
+
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name="student_profile"
+    )
+    admission_number = models.CharField(max_length=64, db_index=True)
+    gender = models.CharField(max_length=16, choices=GENDER_CHOICES, blank=True, default="")
+    date_of_birth = models.DateField(null=True, blank=True)
+    b_form_encrypted = models.TextField(
+        blank=True, default="",
+        help_text="Optional encrypted B-Form or National ID. Enabled per school setting."
+    )
+    emergency_contact = models.CharField(max_length=64, blank=True, default="")
+    blood_group = models.CharField(max_length=8, blank=True, default="")
+    medical_notes = models.TextField(blank=True, default="")
+
+    class Meta:
+        verbose_name = 'Student Profile'
+        verbose_name_plural = 'Student Profiles'
+
+    def __str__(self):
+        return f"{self.user.username} ({self.admission_number})"
+
+
+class StaffProfile(BaseTenantModel):
+    """
+    Tenant-scoped faculty and staff profile with RLS.
+    """
+    GENDER_CHOICES = [("male", "Male"), ("female", "Female"), ("other", "Other")]
+
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name="staff_profile"
+    )
+    employee_id = models.CharField(max_length=64, db_index=True)
+    designation = models.CharField(max_length=100, blank=True, default="Teacher")
+    department = models.CharField(max_length=100, blank=True, default="Academics")
+    gender = models.CharField(max_length=16, choices=GENDER_CHOICES, blank=True, default="")
+    date_of_birth = models.DateField(null=True, blank=True)
+    emergency_contact = models.CharField(max_length=64, blank=True, default="")
+    joining_date = models.DateField(null=True, blank=True)
+    is_active_faculty = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name = 'Staff Profile'
+        verbose_name_plural = 'Staff Profiles'
+
+    def __str__(self):
+        return f"{self.user.username} - {self.designation} ({self.department})"
+
 
 
 class UserLoginAttempt(models.Model):

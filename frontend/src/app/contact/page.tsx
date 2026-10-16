@@ -53,7 +53,7 @@ export default function ContactPage() {
                 <Mail className="w-5 h-5 text-purple-500 shrink-0 mt-0.5" />
                 <div>
                   <strong className="block text-slate-900 dark:text-white">Email Inquiries</strong>
-                  <span>admissions@schoolsaas.cloud • support@schoolsaas.cloud</span>
+                  <span>admissions@optimusorien.cloud • support@optimusorien.cloud</span>
                 </div>
               </div>
             </div>

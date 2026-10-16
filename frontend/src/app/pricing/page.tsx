@@ -17,7 +17,7 @@ export default function PricingPage() {
       highlight: false,
       features: [
         "Up to 600 active students",
-        "Dedicated subdomain (e.g. yourschool.schoolsaas.cloud)",
+        "Dedicated subdomain (e.g. yourschool.optimusorien.cloud)",
         "PostgreSQL Row-Level Security tenant isolation",
         "All 6 role portals (Admin, Headmaster, Teacher, etc.)",
         "Printable 3-copy fee challan slips",

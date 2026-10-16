@@ -13,7 +13,7 @@ export default function FAQPage() {
   const faqs = [
     {
       q: "How does tenant isolation protect my school's student and financial data?",
-      a: "Every school registered on SchoolSaaS Cloud runs on an isolated tenant partition enforced at the database level with PostgreSQL Row-Level Security (RLS). A strict tenant context middleware intercepts each request and binds it to the authenticated institution's cryptographic ID. Data from School A can never be queried or viewed by School B.",
+      a: "Every school registered on Optimus Orien runs on an isolated tenant partition enforced at the database level with PostgreSQL Row-Level Security (RLS). A strict tenant context middleware intercepts each request and binds it to the authenticated institution's cryptographic ID. Data from School A can never be queried or viewed by School B.",
     },
     {
       q: "How do 1Link 1Bill fee vouchers work?",
@@ -52,7 +52,7 @@ export default function FAQPage() {
             Frequently Asked Questions
           </h1>
           <p className="text-base text-slate-600 dark:text-slate-300 max-w-xl mx-auto">
-            Everything you need to know about SchoolSaaS Cloud, multi-tenancy, fee collections, and portal security.
+            Everything you need to know about Optimus Orien, multi-tenancy, fee collections, and portal security.
           </p>
         </div>
 
