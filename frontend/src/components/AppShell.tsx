@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { performLogout, getAccessToken } from "@/lib/api";
+import { performLogout, getAccessToken, getCurrentUser, getSchoolSlug } from "@/lib/api";
 import { Language, translations } from "@/lib/translations";
 import { ThemeToggle } from "./ThemeToggle";
 import {
@@ -60,6 +60,40 @@ export function AppShell({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [internalLang, setInternalLang] = useState<Language>("en");
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(() => {
+    if (typeof window !== "undefined") {
+      return getCurrentUser();
+    }
+    return null;
+  });
+
+  useEffect(() => {
+    const u = getCurrentUser();
+    if (u) {
+      setCurrentUser(u);
+    }
+  }, []);
+
+  const cachedSlug = typeof window !== "undefined" ? getSchoolSlug() : null;
+
+  const isDefaultUserName = !userName || userName === "Admin Account" || userName === "Admin Office";
+  const effectiveUserName = (!isDefaultUserName && userName)
+    ? userName
+    : (currentUser?.full_name || currentUser?.username || userName || "Admin");
+
+  const isDefaultSchoolName = !schoolName || schoolName === "Optimus Orien";
+  const effectiveSchoolName = (!isDefaultSchoolName && schoolName)
+    ? schoolName
+    : (currentUser?.school?.name || currentUser?.school_name || schoolName || "Optimus Orien");
+
+  const isDefaultSchoolSlug = !schoolSlug || schoolSlug === "portal";
+  const effectiveSchoolSlug = (!isDefaultSchoolSlug && schoolSlug)
+    ? schoolSlug
+    : (currentUser?.school?.slug || currentUser?.school_slug || cachedSlug || schoolSlug || "portal");
+
+  const effectiveRole = (activeRole && activeRole !== "admin")
+    ? activeRole
+    : (currentUser?.role || activeRole || "admin");
 
   useEffect(() => {
     if (!controlledLang) {
@@ -132,7 +166,7 @@ export function AppShell({
             <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold text-xs">
               🎓
             </div>
-            <span className="font-bold text-sm tracking-tight text-white">{schoolName}</span>
+            <span className="font-bold text-sm tracking-tight text-white">{effectiveSchoolName}</span>
           </div>
         </div>
 
@@ -145,7 +179,7 @@ export function AppShell({
             {lang === "en" ? "English" : lang === "ur" ? "اردو" : "العربية"}
           </button>
           <div className="w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold">
-            {userName[0] || "M"}
+            {effectiveUserName[0]?.toUpperCase() || "M"}
           </div>
         </div>
       </div>
@@ -169,7 +203,7 @@ export function AppShell({
                   Optimus <span className="text-indigo-400">Orien</span>
                 </span>
                 <span className="text-[10px] text-slate-400 font-mono">
-                  {schoolSlug}.optimusorien.cloud
+                  {effectiveSchoolSlug}.optimusorien.cloud
                 </span>
               </div>
             </Link>
@@ -180,11 +214,11 @@ export function AppShell({
                 <User className="w-4 h-4" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="font-bold text-xs text-white truncate">{userName}</div>
+                <div className="font-bold text-xs text-white truncate">{effectiveUserName}</div>
                 <div className="text-[10px] text-slate-400 truncate flex items-center gap-1">
-                  <span>{userName}</span>
+                  <span>{effectiveUserName}</span>
                   <span>•</span>
-                  <span className="text-indigo-400 capitalize">{activeRole}</span>
+                  <span className="text-indigo-400 capitalize">{effectiveRole}</span>
                 </div>
               </div>
             </div>
@@ -241,7 +275,7 @@ export function AppShell({
               </h1>
               <span className="text-slate-500 hidden sm:inline">•</span>
               <span className="text-xs text-slate-400 hidden sm:inline">
-                {t.admin.welcomeBack}, {userName.split(" ")[0]}!
+                {t.admin.welcomeBack}, {effectiveUserName.split(" ")[0]}!
               </span>
               {isMultiBranch && campuses && campuses.length > 0 && (
                 <div className="ml-2 hidden md:flex items-center gap-1.5">
@@ -323,7 +357,7 @@ export function AppShell({
 
               {/* User Avatar Circle */}
               <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-600 text-white font-black text-xs flex items-center justify-center shadow-md">
-                {userName[0] || "M"}
+                {effectiveUserName[0]?.toUpperCase() || "M"}
               </div>
             </div>
           </header>

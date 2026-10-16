@@ -5,7 +5,9 @@
 const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000').replace(/\/+$/, '');
 
 let _inMemoryAccessToken: string | null = null;
+let _inMemoryRefreshToken: string | null = null;
 let _inMemorySchoolSlug: string | null = null;
+let _inMemoryUser: any = null;
 let _refreshPromise: Promise<string | null> | null = null;
 
 async function doSilentRefresh(): Promise<string | null> {
@@ -14,16 +16,20 @@ async function doSilentRefresh(): Promise<string | null> {
   }
   _refreshPromise = (async () => {
     try {
+      const refreshToken = getRefreshToken();
       const refreshRes = await fetch(`${API_BASE_URL}/api/v1/auth/refresh/`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
+        body: JSON.stringify(refreshToken ? { refresh: refreshToken } : {}),
       });
       if (refreshRes.ok) {
         const refreshData = await refreshRes.json();
         if (refreshData.access) {
           setAccessToken(refreshData.access);
+          if (refreshData.refresh) {
+            setRefreshToken(refreshData.refresh);
+          }
           return refreshData.access as string;
         }
       }
@@ -43,20 +49,18 @@ async function doSilentRefresh(): Promise<string | null> {
  */
 export function clearAllSessionData() {
   _inMemoryAccessToken = null;
+  _inMemoryRefreshToken = null;
   _inMemorySchoolSlug = null;
+  _inMemoryUser = null;
   _refreshPromise = null;
   if (typeof window !== 'undefined') {
     try {
-      sessionStorage.removeItem('school_access_token');
-      sessionStorage.removeItem('school_tenant_slug');
-      sessionStorage.removeItem('current_user_profile');
-      sessionStorage.removeItem('just_registered_school');
-      // Purge any remaining session storage keys
-      sessionStorage.clear();
-      // Purge local storage
-      localStorage.removeItem('school_tenant_slug');
       localStorage.removeItem('school_access_token');
+      localStorage.removeItem('school_refresh_token');
+      localStorage.removeItem('school_tenant_slug');
+      localStorage.removeItem('current_user_profile');
       localStorage.removeItem('just_registered_school');
+      sessionStorage.clear();
     } catch (e) {
       console.warn('Storage purge warning:', e);
     }
@@ -65,18 +69,110 @@ export function clearAllSessionData() {
 
 export function setAccessToken(token: string | null) {
   _inMemoryAccessToken = token;
+  if (typeof window !== 'undefined') {
+    try {
+      if (token) {
+        localStorage.setItem('school_access_token', token);
+      } else {
+        localStorage.removeItem('school_access_token');
+      }
+    } catch {}
+  }
 }
 
 export function getAccessToken(): string | null {
-  return _inMemoryAccessToken;
+  if (_inMemoryAccessToken) return _inMemoryAccessToken;
+  if (typeof window !== 'undefined') {
+    try {
+      const saved = localStorage.getItem('school_access_token');
+      if (saved) {
+        _inMemoryAccessToken = saved;
+        return saved;
+      }
+    } catch {}
+  }
+  return null;
+}
+
+export function setRefreshToken(token: string | null) {
+  _inMemoryRefreshToken = token;
+  if (typeof window !== 'undefined') {
+    try {
+      if (token) {
+        localStorage.setItem('school_refresh_token', token);
+      } else {
+        localStorage.removeItem('school_refresh_token');
+      }
+    } catch {}
+  }
+}
+
+export function getRefreshToken(): string | null {
+  if (_inMemoryRefreshToken) return _inMemoryRefreshToken;
+  if (typeof window !== 'undefined') {
+    try {
+      const saved = localStorage.getItem('school_refresh_token');
+      if (saved) {
+        _inMemoryRefreshToken = saved;
+        return saved;
+      }
+    } catch {}
+  }
+  return null;
 }
 
 export function setSchoolSlug(slug: string | null) {
   _inMemorySchoolSlug = slug;
+  if (typeof window !== 'undefined') {
+    try {
+      if (slug) {
+        localStorage.setItem('school_tenant_slug', slug);
+      } else {
+        localStorage.removeItem('school_tenant_slug');
+      }
+    } catch {}
+  }
 }
 
 export function getSchoolSlug(): string | null {
-  return _inMemorySchoolSlug;
+  if (_inMemorySchoolSlug) return _inMemorySchoolSlug;
+  if (typeof window !== 'undefined') {
+    try {
+      const saved = localStorage.getItem('school_tenant_slug');
+      if (saved) {
+        _inMemorySchoolSlug = saved;
+        return saved;
+      }
+    } catch {}
+  }
+  return null;
+}
+
+export function setCurrentUser(user: any) {
+  _inMemoryUser = user;
+  if (typeof window !== 'undefined') {
+    try {
+      if (user) {
+        localStorage.setItem('current_user_profile', JSON.stringify(user));
+      } else {
+        localStorage.removeItem('current_user_profile');
+      }
+    } catch {}
+  }
+}
+
+export function getCurrentUser(): any {
+  if (_inMemoryUser) return _inMemoryUser;
+  if (typeof window !== 'undefined') {
+    try {
+      const saved = localStorage.getItem('current_user_profile');
+      if (saved) {
+        _inMemoryUser = JSON.parse(saved);
+        return _inMemoryUser;
+      }
+    } catch {}
+  }
+  return null;
 }
 
 export interface LoginResponse {
@@ -270,10 +366,17 @@ export async function loginUser(credentials: { username: string; password: strin
   });
 
   setAccessToken(result.access);
+  if (result.refresh) {
+    setRefreshToken(result.refresh);
+  }
 
   const slug = result.user?.school?.slug || result.user?.school_slug;
   if (slug) {
     setSchoolSlug(slug);
+  }
+
+  if (result.user) {
+    setCurrentUser(result.user);
   }
 
   return result;

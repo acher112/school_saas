@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
-import { apiRequest, getAccessToken } from "@/lib/api";
+import { apiRequest, getAccessToken, getCurrentUser, getSchoolSlug } from "@/lib/api";
 import { Language } from "@/lib/translations";
 import {
   History,
@@ -38,7 +38,18 @@ interface AuditLogItem {
 
 export default function AuditLogsPage() {
   const [lang, setLang] = useState<Language>("en");
-  const [school, setSchool] = useState<any>(null);
+  const [school, setSchool] = useState<any>(() => {
+    if (typeof window !== "undefined") {
+      const u = getCurrentUser();
+      if (u?.school) return u.school;
+      const slug = getSchoolSlug() || u?.school_slug;
+      const name = u?.school_name;
+      if (slug || name) {
+        return { name: name || "Optimus Orien", slug: slug || "portal" };
+      }
+    }
+    return null;
+  });
   const [logs, setLogs] = useState<AuditLogItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
@@ -248,9 +259,9 @@ export default function AuditLogsPage() {
 
   return (
     <AppShell
-      activeRole="admin"
+      activeRole={getCurrentUser()?.role || "admin"}
       title={lang === "ur" ? "سیکیورٹی آڈٹ ٹریل" : "Security and Administrative Audit Trail"}
-      userName="Admin Office"
+      userName={getCurrentUser()?.full_name || getCurrentUser()?.username || "Admin Office"}
       schoolName={school?.name || "Optimus Orien"}
       schoolSlug={school?.slug || "portal"}
       lang={lang}

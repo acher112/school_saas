@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
-import { apiRequest } from "@/lib/api";
+import { apiRequest, getCurrentUser, getSchoolSlug } from "@/lib/api";
 import { Language } from "@/lib/translations";
 import {
   Building2,
@@ -37,7 +37,18 @@ interface CampusItem {
 export default function CampusesPage() {
   const [lang, setLang] = useState<Language>("en");
   const [campuses, setCampuses] = useState<CampusItem[]>([]);
-  const [school, setSchool] = useState<any>(null);
+  const [school, setSchool] = useState<any>(() => {
+    if (typeof window !== "undefined") {
+      const u = getCurrentUser();
+      if (u?.school) return u.school;
+      const slug = getSchoolSlug() || u?.school_slug;
+      const name = u?.school_name;
+      if (slug || name) {
+        return { name: name || "Optimus Orien", slug: slug || "portal" };
+      }
+    }
+    return null;
+  });
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
@@ -204,9 +215,9 @@ export default function CampusesPage() {
 
   return (
     <AppShell
-      activeRole="admin"
+      activeRole={getCurrentUser()?.role || "admin"}
       title={lang === "ur" ? "کیمپس اور برانچ گورننس" : "Campus and Branch Governance"}
-      userName="Admin Office"
+      userName={getCurrentUser()?.full_name || getCurrentUser()?.username || "Admin Office"}
       schoolName={school?.name || "Optimus Orien"}
       schoolSlug={school?.slug || "portal"}
       lang={lang}

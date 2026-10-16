@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
-import { apiRequest, getAccessToken } from "@/lib/api";
+import { apiRequest, getAccessToken, getCurrentUser, getSchoolSlug, setCurrentUser as persistCurrentUser } from "@/lib/api";
 import { Language, translations } from "@/lib/translations";
 import {
   Users,
@@ -36,8 +36,24 @@ import { AQIBreakdownModal } from "@/components/AQIBreakdownModal";
 
 export default function AdminDashboardPage() {
   const [lang, setLang] = useState<Language>("en");
-  const [user, setUser] = useState<any>(null);
-  const [school, setSchool] = useState<any>(null);
+  const [user, setUser] = useState<any>(() => {
+    if (typeof window !== "undefined") {
+      return getCurrentUser();
+    }
+    return null;
+  });
+  const [school, setSchool] = useState<any>(() => {
+    if (typeof window !== "undefined") {
+      const u = getCurrentUser();
+      if (u?.school) return u.school;
+      const slug = getSchoolSlug() || u?.school_slug;
+      const name = u?.school_name;
+      if (slug || name) {
+        return { name: name || "Optimus Orien", slug: slug || "portal" };
+      }
+    }
+    return null;
+  });
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isAQIModalOpen, setIsAQIModalOpen] = useState(false);
@@ -72,9 +88,16 @@ export default function AdminDashboardPage() {
       ]);
 
       if (meRes.status === "fulfilled" && meRes.value?.data) {
-        setUser(meRes.value.data);
-        if (meRes.value.data.school) {
-          setSchool(meRes.value.data.school);
+        const userData = meRes.value.data;
+        setUser(userData);
+        persistCurrentUser(userData);
+        if (userData.school) {
+          setSchool(userData.school);
+        } else if (userData.school_name || userData.school_slug) {
+          setSchool({
+            name: userData.school_name || "Optimus Orien",
+            slug: userData.school_slug || "portal",
+          });
         }
       }
 
@@ -188,7 +211,7 @@ export default function AdminDashboardPage() {
 
   return (
     <AppShell
-      activeRole="admin"
+      activeRole={user?.role || "admin"}
       title={t.admin.dashboardTitle}
       userName={user?.full_name || user?.username || "Admin Office"}
       schoolName={school?.name || "Optimus Orien"}

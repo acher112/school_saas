@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
+import { getCurrentUser } from "@/lib/api";
 import { Users, Search, Plus, Download, Filter, GraduationCap, CheckCircle } from "lucide-react";
 
 export default function StudentsEnrollmentPage() {
@@ -24,7 +25,7 @@ export default function StudentsEnrollmentPage() {
   );
 
   return (
-    <AppShell activeRole="admin" title="Students & Enrollment Management" userName="Admin Account">
+    <AppShell activeRole={getCurrentUser()?.role || "admin"} title="Students & Enrollment Management">
       <div className="space-y-6">
         {/* Top Header Card */}
         <div className="p-6 rounded-3xl bg-gradient-to-r from-blue-900 via-indigo-950 to-slate-900 border border-indigo-700/50 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">

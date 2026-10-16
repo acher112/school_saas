@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
-import { apiRequest } from "@/lib/api";
+import { apiRequest, getCurrentUser } from "@/lib/api";
 import {
   Upload,
   Download,
@@ -189,7 +189,7 @@ export default function OnboardingCSVPage() {
   };
 
   return (
-    <AppShell activeRole="admin" title="School Setup & Bulk Data Onboarding" userName="Admin Office">
+    <AppShell activeRole={getCurrentUser()?.role || "admin"} title="School Setup & Bulk Data Onboarding">
       <div className="space-y-6">
         {/* Top Header Card */}
         <div className="p-6 rounded-3xl bg-gradient-to-r from-blue-900 via-indigo-950 to-slate-900 border border-indigo-700/50 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">

@@ -197,9 +197,13 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
                 'email': authenticated_user.email,
                 'first_name': authenticated_user.first_name,
                 'last_name': authenticated_user.last_name,
+                'full_name': f"{authenticated_user.first_name} {authenticated_user.last_name}".strip() or authenticated_user.username,
                 'role': authenticated_user.role,  # Strictly from DB
                 'must_change_password': authenticated_user.must_change_password,
                 'preferred_language': authenticated_user.preferred_language,
+                'school_id': str(authenticated_user.school_id) if authenticated_user.school_id else None,
+                'school_name': authenticated_user.school.name if authenticated_user.school else None,
+                'school_slug': authenticated_user.school.slug if authenticated_user.school else None,
                 'school': {
                     'id': str(authenticated_user.school.id),
                     'name': authenticated_user.school.name,
@@ -269,6 +273,8 @@ class UserSerializer(serializers.ModelSerializer):
     school_slug = serializers.CharField(source='school.slug', read_only=True)
     school_code = serializers.CharField(source='school.code', read_only=True)
     primary_campus_name = serializers.CharField(source='primary_campus.name', read_only=True)
+    full_name = serializers.SerializerMethodField()
+    school = serializers.SerializerMethodField()
     children = serializers.SerializerMethodField()
     admission_number = serializers.SerializerMethodField()
     employee_id = serializers.SerializerMethodField()
@@ -276,15 +282,34 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
-            'id', 'username', 'email', 'first_name', 'last_name',
+            'id', 'username', 'email', 'first_name', 'last_name', 'full_name',
             'role', 'phone_number', 'preferred_language', 'avatar',
             'is_active', 'must_change_password', 'token_version',
-            'school_id', 'school_name', 'school_slug', 'school_code',
+            'school_id', 'school_name', 'school_slug', 'school_code', 'school',
             'primary_campus_id', 'primary_campus_name',
             'admission_number', 'employee_id',
             'date_joined', 'children'
         ]
         read_only_fields = ['id', 'role', 'school_id', 'must_change_password', 'token_version']
+
+    def get_full_name(self, obj):
+        name = f"{obj.first_name} {obj.last_name}".strip()
+        return name if name else obj.username
+
+    def get_school(self, obj):
+        if obj.school:
+            return {
+                "id": str(obj.school.id),
+                "name": obj.school.name,
+                "slug": obj.school.slug,
+                "code": obj.school.code,
+                "is_multi_branch": obj.school.is_multi_branch,
+                "status": obj.school.status,
+                "brand_primary_color": obj.school.brand_primary_color,
+                "brand_accent_color": obj.school.brand_accent_color,
+                "logo": obj.school.logo,
+            }
+        return None
 
     def get_admission_number(self, obj):
         if hasattr(obj, 'student_profile') and obj.student_profile:

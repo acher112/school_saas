@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
-import { apiRequest, getAccessToken } from "@/lib/api";
+import { apiRequest, getAccessToken, getCurrentUser, getSchoolSlug, setCurrentUser as persistCurrentUser } from "@/lib/api";
 import { Language } from "@/lib/translations";
 import {
   Users,
@@ -56,8 +56,24 @@ interface CredentialSlip {
 
 export default function PeopleDirectoryPage() {
   const [lang, setLang] = useState<Language>("en");
-  const [currentUser, setCurrentUser] = useState<any>(null);
-  const [school, setSchool] = useState<any>(null);
+  const [currentUser, setCurrentUser] = useState<any>(() => {
+    if (typeof window !== "undefined") {
+      return getCurrentUser();
+    }
+    return null;
+  });
+  const [school, setSchool] = useState<any>(() => {
+    if (typeof window !== "undefined") {
+      const u = getCurrentUser();
+      if (u?.school) return u.school;
+      const slug = getSchoolSlug() || u?.school_slug;
+      const name = u?.school_name;
+      if (slug || name) {
+        return { name: name || "Optimus Orien", slug: slug || "portal" };
+      }
+    }
+    return null;
+  });
   const [campuses, setCampuses] = useState<any[]>([]);
   const [selectedCampusId, setSelectedCampusId] = useState("");
   const [activeTab, setActiveTab] = useState<"staff" | "teachers" | "parents" | "students" | "all">("staff");
@@ -116,6 +132,7 @@ export default function PeopleDirectoryPage() {
 
         if (meRes.status === "fulfilled" && meRes.value?.data) {
           setCurrentUser(meRes.value.data);
+          persistCurrentUser(meRes.value.data);
         }
         if (schoolRes.status === "fulfilled" && schoolRes.value?.data) {
           setSchool(schoolRes.value.data);
@@ -464,9 +481,9 @@ export default function PeopleDirectoryPage() {
 
   return (
     <AppShell
-      activeRole="admin"
+      activeRole={currentUser?.role || "admin"}
       title={lang === "ur" ? "افراد اور اکاؤنٹس کی فہرست" : "People and Accounts Directory"}
-      userName="Admin Office"
+      userName={currentUser?.full_name || currentUser?.username || "Admin Office"}
       schoolName={school?.name || "Optimus Orien"}
       schoolSlug={school?.slug || "portal"}
       lang={lang}

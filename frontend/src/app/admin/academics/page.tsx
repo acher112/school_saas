@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
-import { apiRequest, getAccessToken } from "@/lib/api";
+import { apiRequest, getAccessToken, getCurrentUser, getSchoolSlug } from "@/lib/api";
 import { Language } from "@/lib/translations";
 import {
   GraduationCap,
@@ -398,8 +398,10 @@ export default function AcademicStructurePage() {
 
   return (
     <AppShell
-      activeRole="admin"
-      schoolName="Optimus Orien Academy"
+      activeRole={getCurrentUser()?.role || "admin"}
+      userName={getCurrentUser()?.full_name || getCurrentUser()?.username || "Admin Office"}
+      schoolName={getCurrentUser()?.school?.name || "Optimus Orien"}
+      schoolSlug={getCurrentUser()?.school?.slug || getSchoolSlug() || "portal"}
     >
       <div className="space-y-6 max-w-7xl mx-auto pb-12">
         {/* Header Breadcrumb & Actions */}

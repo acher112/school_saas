@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
-import { apiRequest, getAccessToken } from "@/lib/api";
+import { apiRequest, getAccessToken, getCurrentUser, getSchoolSlug } from "@/lib/api";
 import { Language } from "@/lib/translations";
 import {
   ShieldCheck,
@@ -39,7 +39,18 @@ interface CapabilityItem {
 
 export default function RolesPermissionsPage() {
   const [lang, setLang] = useState<Language>("en");
-  const [school, setSchool] = useState<any>(null);
+  const [school, setSchool] = useState<any>(() => {
+    if (typeof window !== "undefined") {
+      const u = getCurrentUser();
+      if (u?.school) return u.school;
+      const slug = getSchoolSlug() || u?.school_slug;
+      const name = u?.school_name;
+      if (slug || name) {
+        return { name: name || "Optimus Orien", slug: slug || "portal" };
+      }
+    }
+    return null;
+  });
   const [roles, setRoles] = useState<RoleInfo[]>([]);
   const [capabilities, setCapabilities] = useState<CapabilityItem[]>([]);
   const [roleDefaults, setRoleDefaults] = useState<Record<string, Record<string, string>>>({});
@@ -323,9 +334,9 @@ export default function RolesPermissionsPage() {
 
   return (
     <AppShell
-      activeRole="admin"
+      activeRole={getCurrentUser()?.role || "admin"}
       title={lang === "ur" ? "اختیارات اور رول کا نظام" : "Roles, Ranks and Permission Matrix"}
-      userName="Admin Office"
+      userName={getCurrentUser()?.full_name || getCurrentUser()?.username || "Admin Office"}
       schoolName={school?.name || "Optimus Orien"}
       schoolSlug={school?.slug || "portal"}
       lang={lang}

@@ -38,11 +38,12 @@ logger = logging.getLogger(__name__)
 def set_refresh_cookie(response: Response, refresh_token: str):
     """Sets a secure httpOnly cookie for JWT refresh token."""
     secure_cookie = not settings.DEBUG and not os.getenv('PYTEST_CURRENT_TEST')
+    # Cross-origin requests between Vercel and Render require SameSite='None' and Secure=True
     response.set_cookie(
         key='refresh_token',
         value=refresh_token,
         httponly=True,
-        samesite='Lax',
+        samesite='None' if secure_cookie else 'Lax',
         secure=secure_cookie,
         path='/api/v1/auth/',
     )
@@ -50,9 +51,11 @@ def set_refresh_cookie(response: Response, refresh_token: str):
 
 def clear_refresh_cookie(response: Response):
     """Clears the JWT refresh token cookie on logout."""
+    secure_cookie = not settings.DEBUG and not os.getenv('PYTEST_CURRENT_TEST')
     response.delete_cookie(
         key='refresh_token',
-        path='/api/v1/auth/'
+        path='/api/v1/auth/',
+        samesite='None' if secure_cookie else 'Lax',
     )
 
 
@@ -244,9 +247,13 @@ class VerifyLoginOTPView(APIView):
                 'email': user.email,
                 'first_name': user.first_name,
                 'last_name': user.last_name,
+                'full_name': f"{user.first_name} {user.last_name}".strip() or user.username,
                 'role': user.role,
                 'must_change_password': user.must_change_password,
                 'preferred_language': user.preferred_language,
+                'school_id': str(user.school_id) if user.school_id else None,
+                'school_name': user.school.name if user.school else None,
+                'school_slug': user.school.slug if user.school else None,
                 'school': {
                     'id': str(user.school.id),
                     'name': user.school.name,

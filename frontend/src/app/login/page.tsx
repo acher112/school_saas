@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { translations, Language } from "@/lib/translations";
-import { apiRequest, setAccessToken, setSchoolSlug, clearAllSessionData, getRoleDashboardPath } from "@/lib/api";
+import { apiRequest, setAccessToken, setRefreshToken, setSchoolSlug, setCurrentUser, clearAllSessionData, getRoleDashboardPath } from "@/lib/api";
 
 interface SchoolOption {
   id: string;
@@ -109,9 +109,15 @@ export default function LoginPage() {
 
       if (res.access) {
         setAccessToken(res.access);
+        if (res.refresh) {
+          setRefreshToken(res.refresh);
+        }
         const slug = res.user?.school?.slug || res.user?.school_slug;
         if (slug) {
           setSchoolSlug(slug);
+        }
+        if (res.user) {
+          setCurrentUser(res.user);
         }
         setAuthSuccess(res);
         // If not requiring password change, auto-route to respective role dashboard
@@ -158,9 +164,15 @@ export default function LoginPage() {
 
       if (res.access) {
         setAccessToken(res.access);
+        if (res.refresh) {
+          setRefreshToken(res.refresh);
+        }
         const slug = res.user?.school?.slug || res.user?.school_slug;
         if (slug) {
           setSchoolSlug(slug);
+        }
+        if (res.user) {
+          setCurrentUser(res.user);
         }
         setAuthSuccess(res);
         if (!res.user?.must_change_password) {
@@ -255,9 +267,15 @@ export default function LoginPage() {
       } else if (res.access) {
         setShowGoogleModal(false);
         setAccessToken(res.access);
+        if (res.refresh) {
+          setRefreshToken(res.refresh);
+        }
         const slug = res.user?.school?.slug || res.user?.school_slug;
         if (slug) {
           setSchoolSlug(slug);
+        }
+        if (res.user) {
+          setCurrentUser(res.user);
         }
         setAuthSuccess(res);
         if (!res.user?.must_change_password) {
