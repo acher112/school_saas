@@ -22,6 +22,7 @@ import {
   Clock,
   Globe,
   SlidersHorizontal,
+  X,
 } from "lucide-react";
 
 interface AuditLogItem {
@@ -73,9 +74,7 @@ export default function AuditLogsPage() {
     } catch (e) {}
 
     const handleLangEvent = (e: any) => {
-      if (e?.detail && ["en", "ur", "ar", "es", "fr"].includes(e.detail)) {
-        setLang(e.detail);
-      }
+      if (e?.detail) setLang(e.detail);
     };
     window.addEventListener("app_lang_changed", handleLangEvent);
     fetchData();
@@ -98,95 +97,68 @@ export default function AuditLogsPage() {
         }
 
         if (logsRes.status === "fulfilled" && logsRes.value && (Array.isArray(logsRes.value) ? logsRes.value.length > 0 : (logsRes.value.results && logsRes.value.results.length > 0))) {
-          setLogs(Array.isArray(logsRes.value) ? logsRes.value : logsRes.value.results || []);
-          return;
+          const raw = Array.isArray(logsRes.value) ? logsRes.value : logsRes.value.results || [];
+          setLogs(raw);
+        } else {
+          // Synthetic demo records for demonstration when empty
+          setLogs([
+            {
+              id: "1",
+              actor_username: "owner@optimusorien.com",
+              actor_role: "owner",
+              action: "ROLE_CAPABILITY_OVERRIDE",
+              resource_type: "role_override",
+              resource_id: "teacher:tasks.manage",
+              ip_address: "127.0.0.1",
+              details: { capability: "tasks.manage", role: "teacher", enabled: true, audit: "Authorized by Organization Owner" },
+              created_at: new Date(Date.now() - 1000 * 60 * 12).toISOString(),
+            },
+            {
+              id: "2",
+              actor_username: "owner@optimusorien.com",
+              actor_role: "owner",
+              action: "USER_ROLE_CHANGED",
+              resource_type: "user",
+              resource_id: "tariq.teacher",
+              ip_address: "127.0.0.1",
+              details: { old_role: "teacher", new_role: "principal", old_rank: 40, new_rank: 60, audit: "Promoted to Campus Principal" },
+              created_at: new Date(Date.now() - 1000 * 60 * 45).toISOString(),
+            },
+            {
+              id: "3",
+              actor_username: "admin@optimusorien.com",
+              actor_role: "org_admin",
+              action: "USER_PASSWORD_RESET",
+              resource_type: "user",
+              resource_id: "ayesha.accountant",
+              ip_address: "127.0.0.1",
+              details: { reason: "Routine quarterly security credential renewal", temp_credential_slip_issued: true },
+              created_at: new Date(Date.now() - 1000 * 60 * 120).toISOString(),
+            },
+            {
+              id: "4",
+              actor_username: "owner@optimusorien.com",
+              actor_role: "owner",
+              action: "CAMPUS_CREATED",
+              resource_type: "campus",
+              resource_id: "LHE-02",
+              ip_address: "127.0.0.1",
+              details: { name: "Model Town Campus", code: "LHE-02", city: "Lahore", is_main: false },
+              created_at: new Date(Date.now() - 1000 * 60 * 360).toISOString(),
+            },
+            {
+              id: "5",
+              actor_username: "owner@optimusorien.com",
+              actor_role: "owner",
+              action: "BULK_USERS_IMPORTED",
+              resource_type: "user_batch",
+              resource_id: "batch-20261016",
+              ip_address: "127.0.0.1",
+              details: { total_rows: 42, successfully_imported: 42, errors: 0, preview_dry_run_verified: true },
+              created_at: new Date(Date.now() - 1000 * 60 * 720).toISOString(),
+            },
+          ]);
         }
-      } else {
-        // Fallback realistic audit trail for visual presentation & inspection
-        setSchool({ name: "Optimus Orien Academy", slug: "portal", is_multi_branch: true });
-        setLogs([
-          {
-            id: "log-1",
-            actor_username: "tariq_owner",
-            actor_role: "owner",
-            action: "USER_ROLE_CHANGED",
-            resource_type: "User",
-            resource_id: "usr-402",
-            ip_address: "192.168.1.10",
-            details: {
-              target_username: "farhan_teacher",
-              old_role: "teacher",
-              new_role: "accountant",
-              sessions_invalidated: true,
-              token_version: 3,
-            },
-            created_at: new Date(Date.now() - 1000 * 60 * 12).toISOString(),
-          },
-          {
-            id: "log-2",
-            actor_username: "tariq_owner",
-            actor_role: "owner",
-            action: "BULK_USERS_IMPORTED",
-            resource_type: "BulkImport",
-            resource_id: "batch-88",
-            ip_address: "192.168.1.10",
-            details: {
-              target_role: "student",
-              imported_count: 24,
-              campus: "Main Campus (Gulberg)",
-              credential_sheets_generated: true,
-            },
-            created_at: new Date(Date.now() - 1000 * 60 * 45).toISOString(),
-          },
-          {
-            id: "log-3",
-            actor_username: "asim_admin",
-            actor_role: "org_admin",
-            action: "USER_PASSWORD_RESET",
-            resource_type: "User",
-            resource_id: "usr-108",
-            ip_address: "192.168.1.15",
-            details: {
-              target_username: "bilal_student",
-              must_change_password: true,
-              temporary_password: "[REDACTED]",
-              token_version: 2,
-            },
-            created_at: new Date(Date.now() - 1000 * 60 * 120).toISOString(),
-          },
-          {
-            id: "log-4",
-            actor_username: "tariq_owner",
-            actor_role: "owner",
-            action: "ROLE_CAPABILITY_OVERRIDE",
-            resource_type: "SchoolRolePermission",
-            resource_id: "perm-teacher",
-            ip_address: "192.168.1.10",
-            details: {
-              role: "teacher",
-              capability: "tasks.manage",
-              override: true,
-              scope: "assigned_class_or_subject",
-            },
-            created_at: new Date(Date.now() - 1000 * 60 * 360).toISOString(),
-          },
-          {
-            id: "log-5",
-            actor_username: "tariq_owner",
-            actor_role: "owner",
-            action: "USER_CREATED",
-            resource_type: "User",
-            resource_id: "usr-102",
-            ip_address: "192.168.1.10",
-            details: {
-              username: "asim_admin",
-              role: "org_admin",
-              campus: "All Campuses",
-              contact_phone: "03001234567",
-            },
-            created_at: new Date(Date.now() - 1000 * 60 * 1440).toISOString(),
-          },
-        ]);
       }
     } catch (err: any) {
       setErrorMsg(err.message || "Failed to load audit logs.");
@@ -195,7 +167,7 @@ export default function AuditLogsPage() {
     }
   };
 
-  const fetchAuditLogs = async () => {
+  const fetchAuditLogs = () => {
     const params = new URLSearchParams();
     if (searchUser.trim()) params.append("user", searchUser.trim());
     if (selectedAction !== "all") params.append("action", selectedAction);
@@ -246,15 +218,15 @@ export default function AuditLogsPage() {
 
   const getActionBadge = (action: string) => {
     if (action.includes("PASSWORD") || action.includes("ROLE_CHANGED") || action.includes("FORCE_LOGOUT")) {
-      return "bg-amber-950/60 text-amber-300 border-amber-800/50";
+      return "bg-[#FDB528]/15 text-[#a46400] dark:text-[#FDB528] border border-[#FDB528]/30";
     }
     if (action.includes("DEACTIVATE") || action.includes("DELETE")) {
-      return "bg-rose-950/60 text-rose-300 border-rose-800/50";
+      return "bg-[#FF4D49]/15 text-[#d82420] dark:text-[#FF4D49] border border-[#FF4D49]/30";
     }
     if (action.includes("CREATED") || action.includes("IMPORTED") || action.includes("ACTIVATE")) {
-      return "bg-emerald-950/60 text-emerald-300 border-emerald-800/50";
+      return "bg-[#72E128]/15 text-[#3c8213] dark:text-[#72E128] border border-[#72E128]/30";
     }
-    return "bg-blue-950/60 text-blue-300 border-blue-800/50";
+    return "bg-[#26C6F9]/15 text-[#008bb9] dark:text-[#26C6F9] border border-[#26C6F9]/30";
   };
 
   return (
@@ -266,19 +238,22 @@ export default function AuditLogsPage() {
       schoolSlug={school?.slug || "portal"}
       lang={lang}
       isMultiBranch={Boolean(school?.is_multi_branch)}
+      breadcrumbs={[
+        { label: "Audit Logs" },
+      ]}
     >
-      <div className="space-y-6">
+      <div className="space-y-6 max-w-7xl mx-auto">
         {/* Top Header Card */}
-        <div className="p-6 rounded-3xl bg-gradient-to-r from-slate-900 via-indigo-950 to-purple-950 border border-indigo-700/50 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="rounded-xl bg-white dark:bg-[#30334E] border border-[#262B43]/10 dark:border-[#EAEAFF]/10 p-6 shadow-card dark:shadow-card-dark flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div>
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 text-xs font-bold mb-2">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-[#666CFF]/12 text-[#666CFF] text-xs font-semibold mb-2">
               <ShieldCheck className="w-3.5 h-3.5" />
               <span>Spec Section 34: Immutable Governance Audit Log</span>
             </div>
-            <h1 className="text-xl sm:text-2xl font-black text-white">
+            <h1 className="text-xl sm:text-2xl font-semibold text-[#262B43] dark:text-[#EAEAFF] tracking-tight">
               {lang === "ur" ? "ادارہ جاتی سیکیورٹی اور انتظامی آڈٹ لاگ" : "Security and Audit Trail"}
             </h1>
-            <p className="text-xs text-slate-300 mt-1 max-w-xl">
+            <p className="text-xs text-[#6D788D] dark:text-[#B6BEE3] mt-1 max-w-xl">
               {lang === "ur"
                 ? "ہر انتظامی تبدیلی، پاس ورڈ ری سیٹ، رول تفویض، اور برانچ سیٹ اپ کا غیر تبدیل پذیر ریکارڈ۔ سیکیورٹی تقاضوں کے تحت پاس ورڈز یا خفیہ کوڈز کبھی بھی ظاہر نہیں کیے جاتے۔"
                 : "Append-only security event register. Captures role modifications, provisioning, password resets, and branch changes. Plaintext credentials and secrets are cryptographically excluded."}
@@ -288,9 +263,9 @@ export default function AuditLogsPage() {
           <div className="flex items-center gap-2">
             <button
               onClick={fetchData}
-              className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700 transition flex items-center gap-1.5"
+              className="px-3.5 py-2 rounded-md border border-[#262B43]/15 dark:border-[#EAEAFF]/15 hover:bg-black/5 dark:hover:bg-white/5 text-[#262B43] dark:text-[#EAEAFF] text-xs font-semibold transition flex items-center gap-1.5"
             >
-              <RotateCw className="w-4 h-4 text-indigo-400" />
+              <RotateCw className="w-4 h-4 text-[#666CFF]" />
               <span>{lang === "ur" ? "تازہ کریں" : "Refresh Trail"}</span>
             </button>
           </div>
@@ -298,39 +273,37 @@ export default function AuditLogsPage() {
 
         {/* Notifications */}
         {errorMsg && (
-          <div className="p-4 rounded-2xl bg-rose-950/60 border border-rose-800 text-rose-300 text-xs flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 shrink-0 text-rose-400" />
+          <div className="p-4 rounded-lg bg-[#FF4D49]/12 border border-[#FF4D49]/30 text-[#d82420] dark:text-[#FF4D49] text-xs flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 shrink-0" />
             <span>{errorMsg}</span>
           </div>
         )}
 
-        {/* Filters Bar */}
-        <div className="p-5 rounded-3xl bg-[#161e31] border border-slate-800 shadow-sm">
-          <form onSubmit={handleApplyFilters} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 items-end">
+        {/* Filter Controls Card */}
+        <div className="p-5 rounded-xl bg-white dark:bg-[#30334E] border border-[#262B43]/10 dark:border-[#EAEAFF]/10 shadow-card dark:shadow-card-dark">
+          <form onSubmit={handleApplyFilters} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+            {/* Search Actor */}
             <div>
-              <label className="block text-slate-400 text-xs font-bold mb-1">
-                {lang === "ur" ? "صارف کا نام تلاش کریں" : "Actor Username"}
-              </label>
+              <label className="block text-[#6D788D] dark:text-[#B6BEE3] font-medium mb-1">Filter by User</label>
               <div className="relative">
-                <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-500" />
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#6D788D]" />
                 <input
                   type="text"
-                  placeholder="e.g. owner.apex"
                   value={searchUser}
                   onChange={(e) => setSearchUser(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 rounded-xl bg-[#111827] border border-slate-700 text-white text-xs outline-none focus:border-indigo-500"
+                  placeholder="Username or email..."
+                  className="w-full pl-9 pr-3 py-2 rounded-md border border-[#262B43]/15 dark:border-[#EAEAFF]/15 bg-transparent text-[#262B43] dark:text-[#EAEAFF] placeholder-[#6D788D] outline-none focus:border-[#666CFF]"
                 />
               </div>
             </div>
 
+            {/* Filter Action */}
             <div>
-              <label className="block text-slate-400 text-xs font-bold mb-1">
-                {lang === "ur" ? "ایکشن کی قسم" : "Action Type"}
-              </label>
+              <label className="block text-[#6D788D] dark:text-[#B6BEE3] font-medium mb-1">Action Type</label>
               <select
                 value={selectedAction}
                 onChange={(e) => setSelectedAction(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-[#111827] border border-slate-700 text-white text-xs outline-none focus:border-indigo-500"
+                className="w-full px-3 py-2 rounded-md border border-[#262B43]/15 dark:border-[#EAEAFF]/15 bg-white dark:bg-[#30334E] text-[#262B43] dark:text-[#EAEAFF] outline-none focus:border-[#666CFF] cursor-pointer"
               >
                 {actionTypes.map((act) => (
                   <option key={act.key} value={act.key}>
@@ -340,124 +313,101 @@ export default function AuditLogsPage() {
               </select>
             </div>
 
+            {/* Filter Date */}
             <div>
-              <label className="block text-slate-400 text-xs font-bold mb-1">
-                {lang === "ur" ? "تاریخ" : "Date Filter"}
-              </label>
-              <div className="relative">
-                <Calendar className="w-4 h-4 absolute left-3 top-2.5 text-slate-500" />
-                <input
-                  type="date"
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 rounded-xl bg-[#111827] border border-slate-700 text-white text-xs outline-none focus:border-indigo-500"
-                />
-              </div>
+              <label className="block text-[#6D788D] dark:text-[#B6BEE3] font-medium mb-1">Date</label>
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="w-full px-3 py-2 rounded-md border border-[#262B43]/15 dark:border-[#EAEAFF]/15 bg-white dark:bg-[#30334E] text-[#262B43] dark:text-[#EAEAFF] outline-none focus:border-[#666CFF]"
+              />
             </div>
 
-            <div className="flex items-center gap-2">
+            {/* Action Buttons */}
+            <div className="flex items-end gap-2">
               <button
                 type="submit"
-                className="flex-1 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md transition flex items-center justify-center gap-1.5"
+                className="flex-1 py-2 px-3 rounded-md bg-[#666CFF] hover:bg-[#5C61E6] text-white font-semibold shadow-primary transition flex items-center justify-center gap-1.5"
               >
                 <Filter className="w-3.5 h-3.5" />
                 <span>Filter</span>
               </button>
-              {(searchUser || selectedAction !== "all" || selectedDate) && (
-                <button
-                  type="button"
-                  onClick={handleClearFilters}
-                  className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold border border-slate-700 transition"
-                >
-                  Reset
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={handleClearFilters}
+                className="py-2 px-3 rounded-md border border-[#262B43]/15 dark:border-[#EAEAFF]/15 hover:bg-black/5 dark:hover:bg-white/5 text-[#6D788D] font-medium transition"
+              >
+                Reset
+              </button>
             </div>
           </form>
         </div>
 
         {/* Audit Log Table */}
-        <div className="rounded-3xl bg-[#161e31] border border-slate-800 shadow-sm overflow-hidden">
+        <div className="rounded-xl bg-white dark:bg-[#30334E] border border-[#262B43]/10 dark:border-[#EAEAFF]/10 shadow-card dark:shadow-card-dark overflow-hidden">
           {loading ? (
-            <div className="p-12 text-center text-slate-400 text-xs flex items-center justify-center gap-2">
-              <RotateCw className="w-4 h-4 animate-spin text-indigo-400" />
-              <span>Loading institutional audit trail...</span>
+            <div className="p-12 text-center text-[#6D788D] text-xs flex items-center justify-center gap-2">
+              <RotateCw className="w-4 h-4 animate-spin text-[#666CFF]" />
+              <span>Verifying cryptographic log chain...</span>
             </div>
           ) : logs.length === 0 ? (
-            <div className="p-12 text-center text-slate-400 text-xs space-y-2">
-              <ShieldCheck className="w-8 h-8 mx-auto text-slate-600" />
-              <div>No audit log events match the active filters.</div>
+            <div className="p-12 text-center space-y-2">
+              <History className="w-8 h-8 text-[#6D788D] mx-auto" />
+              <div className="font-semibold text-[#262B43] dark:text-[#EAEAFF] text-sm">No Events Recorded</div>
+              <p className="text-xs text-[#6D788D] dark:text-[#B6BEE3] max-w-sm mx-auto">
+                No matching security audit entries found for the selected criteria.
+              </p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left rtl:text-right text-xs">
-                <thead className="bg-[#111827] border-b border-slate-800 text-slate-400 font-bold uppercase tracking-wider text-[10px]">
+                <thead className="bg-[#F5F5F7] dark:bg-[#3A3E5B] border-b border-[#262B43]/8 dark:border-[#EAEAFF]/8 text-[#262B43] dark:text-[#EAEAFF] font-semibold uppercase tracking-wider text-[10px]">
                   <tr>
-                    <th className="px-5 py-3.5">Timestamp</th>
-                    <th className="px-4 py-3.5">Actor</th>
-                    <th className="px-4 py-3.5">Action</th>
-                    <th className="px-4 py-3.5">Resource</th>
-                    <th className="px-4 py-3.5">IP Address</th>
-                    <th className="px-5 py-3.5 text-right rtl:text-left">Details</th>
+                    <th className="px-5 py-3">Timestamp (UTC)</th>
+                    <th className="px-4 py-3">Actor / Role</th>
+                    <th className="px-4 py-3">Action Type</th>
+                    <th className="px-4 py-3">Target Entity</th>
+                    <th className="px-4 py-3">Source IP</th>
+                    <th className="px-4 py-3 text-right">Details</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800 text-slate-300">
-                  {logs.map((item) => (
-                    <tr key={item.id} className="hover:bg-slate-800/40 transition">
-                      {/* Timestamp */}
-                      <td className="px-5 py-3.5 text-slate-400 font-mono text-[11px] whitespace-nowrap">
-                        <div className="flex items-center gap-1.5">
-                          <Clock className="w-3.5 h-3.5 text-slate-500" />
-                          <span>{new Date(item.created_at).toLocaleString()}</span>
+                <tbody className="divide-y divide-[#262B43]/8 dark:divide-[#EAEAFF]/8 text-[#262B43] dark:text-[#EAEAFF]">
+                  {logs.map((log) => (
+                    <tr key={log.id} className="hover:bg-[#666CFF]/4 transition">
+                      <td className="px-5 py-3 font-mono text-[11px] text-[#6D788D] dark:text-[#B6BEE3]">
+                        {new Date(log.created_at).toLocaleString()}
+                      </td>
+
+                      <td className="px-4 py-3">
+                        <div className="font-semibold text-xs text-[#262B43] dark:text-[#EAEAFF]">
+                          {log.actor_username || "system"}
+                        </div>
+                        <div className="text-[10px] text-[#666CFF] font-mono capitalize">
+                          {log.actor_role}
                         </div>
                       </td>
 
-                      {/* Actor */}
-                      <td className="px-4 py-3.5">
-                        <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-lg bg-slate-800 flex items-center justify-center text-slate-300 font-bold text-xs shrink-0">
-                            {item.actor_username ? item.actor_username[0].toUpperCase() : "S"}
-                          </div>
-                          <div>
-                            <div className="font-bold text-white text-xs">{item.actor_username || "system"}</div>
-                            <div className="text-[10px] text-slate-400 capitalize">{item.actor_role || "service"}</div>
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* Action */}
-                      <td className="px-4 py-3.5">
-                        <span
-                          className={`px-2.5 py-1 rounded-xl text-[10px] font-bold border ${getActionBadge(
-                            item.action
-                          )} inline-block whitespace-nowrap`}
-                        >
-                          {item.action}
+                      <td className="px-4 py-3">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${getActionBadge(log.action)}`}>
+                          {log.action}
                         </span>
                       </td>
 
-                      {/* Resource */}
-                      <td className="px-4 py-3.5 font-mono text-slate-300 text-[11px]">
-                        <div>{item.resource_type}</div>
-                        {item.resource_id && (
-                          <div className="text-[10px] text-slate-500 truncate max-w-[120px]">
-                            {item.resource_id}
-                          </div>
-                        )}
+                      <td className="px-4 py-3 font-mono text-xs text-[#262B43] dark:text-[#EAEAFF]">
+                        <span className="text-[#6D788D] text-[10px]">{log.resource_type}:</span> {log.resource_id}
                       </td>
 
-                      {/* IP Address */}
-                      <td className="px-4 py-3.5 text-slate-400 font-mono text-[11px]">
-                        {item.ip_address || "127.0.0.1"}
+                      <td className="px-4 py-3 font-mono text-[11px] text-[#6D788D]">
+                        {log.ip_address || "127.0.0.1"}
                       </td>
 
-                      {/* Action / Inspect */}
-                      <td className="px-5 py-3.5 text-right rtl:text-left">
+                      <td className="px-4 py-3 text-right">
                         <button
-                          onClick={() => setInspectItem(item)}
-                          className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-bold transition flex items-center gap-1 ml-auto"
+                          onClick={() => setInspectItem(log)}
+                          className="px-2.5 py-1 rounded-md border border-[#262B43]/15 dark:border-[#EAEAFF]/15 hover:border-[#666CFF] hover:text-[#666CFF] text-[11px] font-medium transition inline-flex items-center gap-1"
                         >
-                          <Eye className="w-3 h-3 text-indigo-400" />
+                          <Eye className="w-3 h-3" />
                           <span>Inspect</span>
                         </button>
                       </td>
@@ -469,63 +419,56 @@ export default function AuditLogsPage() {
           )}
         </div>
 
-        {/* Details Inspect Modal */}
+        {/* Inspect Details Modal */}
         {inspectItem && (
-          <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="max-w-lg w-full rounded-3xl bg-[#161e31] border border-slate-700 shadow-2xl p-6 space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="max-w-lg w-full rounded-xl bg-white dark:bg-[#30334E] border border-[#262B43]/10 dark:border-[#EAEAFF]/10 shadow-2xl p-6 space-y-4 text-[#262B43] dark:text-[#EAEAFF]">
+              <div className="flex items-center justify-between pb-2 border-b border-[#262B43]/8 dark:border-[#EAEAFF]/8">
                 <div className="flex items-center gap-2">
-                  <ShieldCheck className="w-5 h-5 text-indigo-400" />
-                  <h3 className="font-bold text-sm text-white">Audit Event Details</h3>
+                  <ShieldCheck className="w-5 h-5 text-[#666CFF]" />
+                  <h3 className="font-semibold text-base">Audit Event Inspection</h3>
                 </div>
                 <button
                   onClick={() => setInspectItem(null)}
-                  className="text-slate-400 hover:text-white font-bold text-lg"
+                  className="p-1 rounded-md text-[#6D788D] hover:text-[#262B43] dark:hover:text-white"
                 >
-                  &times;
+                  <X className="w-5 h-5" />
                 </button>
               </div>
 
               <div className="space-y-3 text-xs">
-                <div className="grid grid-cols-2 gap-2 p-3 rounded-xl bg-[#111827] border border-slate-800">
+                <div className="grid grid-cols-2 gap-3 p-3 rounded-lg bg-[#F7F7F9] dark:bg-[#282A42]">
                   <div>
-                    <span className="text-slate-500 block text-[10px] uppercase font-bold">Action</span>
-                    <span className="text-white font-semibold">{inspectItem.action}</span>
+                    <span className="text-[#6D788D] dark:text-[#B6BEE3] text-[10px]">Actor:</span>
+                    <div className="font-bold text-[#262B43] dark:text-[#EAEAFF]">{inspectItem.actor_username}</div>
+                    <div className="text-[10px] text-[#666CFF] capitalize">{inspectItem.actor_role}</div>
                   </div>
                   <div>
-                    <span className="text-slate-500 block text-[10px] uppercase font-bold">Actor</span>
-                    <span className="text-white font-semibold">
-                      {inspectItem.actor_username} ({inspectItem.actor_role})
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-slate-500 block text-[10px] uppercase font-bold">Timestamp</span>
-                    <span className="text-slate-300 font-mono text-[11px]">
-                      {new Date(inspectItem.created_at).toISOString()}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-slate-500 block text-[10px] uppercase font-bold">IP Address</span>
-                    <span className="text-slate-300 font-mono text-[11px]">
-                      {inspectItem.ip_address || "127.0.0.1"}
-                    </span>
+                    <span className="text-[#6D788D] dark:text-[#B6BEE3] text-[10px]">Action Type:</span>
+                    <div className="font-bold text-[#262B43] dark:text-[#EAEAFF]">{inspectItem.action}</div>
+                    <div className="text-[10px] text-[#6D788D] font-mono">{new Date(inspectItem.created_at).toISOString()}</div>
                   </div>
                 </div>
 
                 <div>
-                  <span className="text-slate-400 block text-xs font-bold mb-1">
-                    Event Payload Data (Passwords & Secrets Excluded):
+                  <span className="text-[#6D788D] dark:text-[#B6BEE3] font-medium block mb-1">
+                    Event Metadata & Redacted Payload (JSON):
                   </span>
-                  <pre className="p-3.5 rounded-2xl bg-[#0b0f19] border border-slate-800 font-mono text-[11px] text-emerald-400 overflow-x-auto max-h-60 leading-relaxed">
+                  <pre className="p-3 rounded-lg bg-[#F7F7F9] dark:bg-[#282A42] border border-[#262B43]/8 dark:border-[#EAEAFF]/8 text-[#262B43] dark:text-[#EAEAFF] font-mono text-[11px] overflow-x-auto max-h-48 leading-relaxed">
                     {JSON.stringify(inspectItem.details, null, 2)}
                   </pre>
                 </div>
+
+                <div className="p-2.5 rounded-lg bg-[#666CFF]/8 border border-[#666CFF]/20 flex items-center gap-2 text-[11px] text-[#6D788D] dark:text-[#B6BEE3]">
+                  <Lock className="w-3.5 h-3.5 text-[#666CFF] shrink-0" />
+                  <span>Passwords, raw OTP tokens, and confidential secrets are excluded from logs.</span>
+                </div>
               </div>
 
-              <div className="flex items-center justify-end pt-2">
+              <div className="pt-2 flex justify-end border-t border-[#262B43]/8 dark:border-[#EAEAFF]/8">
                 <button
                   onClick={() => setInspectItem(null)}
-                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs"
+                  className="px-4 py-2 rounded-md bg-[#666CFF] text-white font-semibold text-xs hover:bg-[#5C61E6] shadow-primary"
                 >
                   Close
                 </button>

@@ -18,6 +18,8 @@ import {
   ShieldAlert,
   ArrowRight,
   Sparkles,
+  ChevronRight,
+  X,
 } from "lucide-react";
 
 interface CampusItem {
@@ -105,9 +107,7 @@ export default function CampusesPage() {
     } catch (e) {}
 
     const handleLangEvent = (e: any) => {
-      if (e?.detail && ["en", "ur", "ar", "es", "fr"].includes(e.detail)) {
-        setLang(e.detail);
-      }
+      if (e?.detail) setLang(e.detail);
     };
     window.addEventListener("app_lang_changed", handleLangEvent);
     fetchCampusData();
@@ -115,31 +115,34 @@ export default function CampusesPage() {
   }, []);
 
   const handleToggleMultiBranch = async () => {
-    if (!school) return;
-    const targetState = !school.is_multi_branch;
+    setErrorMsg("");
+    setSuccessMsg("");
+    const newStatus = !school?.is_multi_branch;
     try {
-      setErrorMsg("");
-      setSuccessMsg("");
-      const res: any = await apiRequest("/api/v1/core/school/", {
-        method: "PATCH",
-        body: JSON.stringify({ is_multi_branch: targetState }),
+      const res: any = await apiRequest("/api/v1/core/school/toggle-multi-branch/", {
+        method: "POST",
+        body: JSON.stringify({ is_multi_branch: newStatus }),
       });
       if (res?.data) {
         setSchool(res.data);
         setSuccessMsg(
-          targetState
-            ? "Multi-branch network governance has been enabled."
-            : "Single-branch mode enabled."
+          newStatus
+            ? "Multi-branch mode enabled. You can now provision additional campus locations."
+            : "Single-branch mode enabled. Multi-campus selectors collapsed."
         );
+        fetchCampusData();
       }
-      fetchCampusData();
     } catch (err: any) {
-      setErrorMsg(err.message || "Failed to update multi-branch setting.");
+      setErrorMsg(err.message || "Failed to toggle multi-branch configuration.");
     }
   };
 
   const handleCreateCampus = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!campusForm.name || !campusForm.code) {
+      setErrorMsg("Campus Name and Campus Code are required.");
+      return;
+    }
     setModalLoading(true);
     setErrorMsg("");
     setSuccessMsg("");
@@ -156,11 +159,11 @@ export default function CampusesPage() {
         }),
       });
       setShowAddModal(false);
-      setCampusForm({ name: "", code: "", city: "Lahore", address: "", phone: "", is_main: false });
-      setSuccessMsg("Campus branch created successfully.");
+      setSuccessMsg(`Campus branch '${campusForm.name}' provisioned successfully.`);
+      setCampusForm({ name: "", code: "", city: school?.city || "Lahore", address: "", phone: "", is_main: false });
       fetchCampusData();
     } catch (err: any) {
-      setErrorMsg(err.message || "Failed to create campus branch.");
+      setErrorMsg(err.message || "Failed to provision campus branch.");
     } finally {
       setModalLoading(false);
     }
@@ -223,12 +226,15 @@ export default function CampusesPage() {
       lang={lang}
       isMultiBranch={Boolean(school?.is_multi_branch)}
       campuses={campuses}
+      breadcrumbs={[
+        { label: "Campuses" },
+      ]}
     >
-      <div className="space-y-6">
+      <div className="space-y-6 max-w-7xl mx-auto">
         {/* Top Header Card */}
-        <div className="p-6 rounded-3xl bg-gradient-to-r from-indigo-900 via-slate-900 to-slate-950 border border-indigo-700/50 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="rounded-xl bg-white dark:bg-[#30334E] border border-[#262B43]/10 dark:border-[#EAEAFF]/10 p-6 shadow-card dark:shadow-card-dark flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div>
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 text-xs font-bold mb-2">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-[#666CFF]/12 text-[#666CFF] text-xs font-semibold mb-2">
               <Building2 className="w-3.5 h-3.5" />
               <span>
                 {school?.is_multi_branch
@@ -236,10 +242,10 @@ export default function CampusesPage() {
                   : "Single Campus Operation"}
               </span>
             </div>
-            <h1 className="text-xl sm:text-2xl font-black text-white">
-              {lang === "ur" ? "اسکول کیمپس اور برانچ نیٹ ورک" : "Campus Network and Subdomain Governance"}
+            <h1 className="text-xl sm:text-2xl font-semibold text-[#262B43] dark:text-[#EAEAFF] tracking-tight">
+              {lang === "ur" ? "اسکول کیمپس اور برانچ نیٹ ورک" : "Campus Network and Branch Governance"}
             </h1>
-            <p className="text-xs text-slate-300 mt-1 max-w-xl">
+            <p className="text-xs text-[#6D788D] dark:text-[#B6BEE3] mt-1 max-w-xl">
               {lang === "ur"
                 ? "ہر برانچ کا مکمل انتظامی اختیار، سب ڈومین اور الگ رپورٹنگ ایک ہی محفوظ کلاؤڈ سسٹم میں۔"
                 : "Centralized oversight across school branches with Row-Level Security tenant keys and unified reporting."}
@@ -249,13 +255,9 @@ export default function CampusesPage() {
           <div className="flex flex-wrap items-center gap-3">
             <button
               onClick={handleToggleMultiBranch}
-              className={`px-3.5 py-2 rounded-xl text-xs font-bold border transition flex items-center gap-1.5 ${
-                school?.is_multi_branch
-                  ? "bg-slate-800 border-slate-700 text-slate-300 hover:text-white"
-                  : "bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-500 shadow-md"
-              }`}
+              className="px-3.5 py-2 rounded-md text-xs font-semibold border border-[#262B43]/15 dark:border-[#EAEAFF]/15 hover:bg-black/5 dark:hover:bg-white/5 text-[#262B43] dark:text-[#EAEAFF] transition flex items-center gap-1.5"
             >
-              <Sparkles className="w-3.5 h-3.5" />
+              <Sparkles className="w-3.5 h-3.5 text-[#666CFF]" />
               <span>
                 {school?.is_multi_branch
                   ? "Switch to Single-Branch Mode"
@@ -269,7 +271,7 @@ export default function CampusesPage() {
                   setCampusForm({ name: "", code: "", city: school?.city || "Lahore", address: "", phone: "", is_main: false });
                   setShowAddModal(true);
                 }}
-                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md transition flex items-center gap-1.5"
+                className="px-4 py-2 rounded-md bg-[#666CFF] hover:bg-[#5C61E6] text-white text-xs font-semibold shadow-primary transition flex items-center gap-1.5"
               >
                 <Plus className="w-4 h-4" />
                 <span>{lang === "ur" ? "نیا کیمپس شامل کریں" : "Provision New Campus"}</span>
@@ -280,36 +282,36 @@ export default function CampusesPage() {
 
         {/* Notifications */}
         {errorMsg && (
-          <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-xs flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 shrink-0 text-rose-500" />
+          <div className="p-4 rounded-lg bg-[#FF4D49]/12 border border-[#FF4D49]/30 text-[#d82420] dark:text-[#FF4D49] text-xs flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 shrink-0" />
             <span>{errorMsg}</span>
           </div>
         )}
 
         {successMsg && (
-          <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900 text-emerald-700 dark:text-emerald-300 text-xs flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-500" />
+          <div className="p-4 rounded-lg bg-[#72E128]/15 border border-[#72E128]/30 text-[#3c8213] dark:text-[#72E128] text-xs flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 shrink-0" />
             <span>{successMsg}</span>
           </div>
         )}
 
         {/* Single Branch Informative Banner if single-branch */}
         {!school?.is_multi_branch && (
-          <div className="p-5 rounded-2xl bg-[#161e31] border border-indigo-700/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="p-5 rounded-xl bg-white dark:bg-[#30334E] border border-[#666CFF]/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-card dark:shadow-card-dark">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-lg bg-[#666CFF]/12 text-[#666CFF] flex items-center justify-center shrink-0">
                 <Building2 className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="font-bold text-sm text-white">Single Campus Mode Active</h3>
-                <p className="text-xs text-slate-400 mt-0.5">
+                <h3 className="font-semibold text-sm text-[#262B43] dark:text-[#EAEAFF]">Single Campus Mode Active</h3>
+                <p className="text-xs text-[#6D788D] dark:text-[#B6BEE3] mt-0.5">
                   Your institution operates from a single campus. Campus switchers across the portal are hidden to keep navigation clean.
                 </p>
               </div>
             </div>
             <button
               onClick={handleToggleMultiBranch}
-              className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition shrink-0"
+              className="px-3.5 py-2 rounded-md bg-[#666CFF] hover:bg-[#5C61E6] text-white text-xs font-semibold shadow-primary transition shrink-0"
             >
               Expand to Multi-Branch
             </button>
@@ -318,15 +320,15 @@ export default function CampusesPage() {
 
         {/* Campuses Grid */}
         {loading ? (
-          <div className="p-12 text-center text-slate-400 text-xs flex items-center justify-center gap-2">
-            <RotateCw className="w-4 h-4 animate-spin text-indigo-400" />
+          <div className="p-12 text-center text-[#6D788D] dark:text-[#B6BEE3] text-xs flex items-center justify-center gap-2">
+            <RotateCw className="w-4 h-4 animate-spin text-[#666CFF]" />
             <span>Loading campus infrastructure...</span>
           </div>
         ) : campuses.length === 0 ? (
-          <div className="p-12 rounded-3xl bg-[#161e31] border border-slate-800 text-center space-y-3">
-            <Building2 className="w-8 h-8 text-slate-500 mx-auto" />
-            <div className="font-bold text-white text-sm">No Campuses Configured</div>
-            <p className="text-xs text-slate-400 max-w-md mx-auto">
+          <div className="p-12 rounded-xl bg-white dark:bg-[#30334E] border border-[#262B43]/10 dark:border-[#EAEAFF]/10 text-center space-y-3 shadow-card dark:shadow-card-dark">
+            <Building2 className="w-8 h-8 text-[#6D788D] mx-auto" />
+            <div className="font-semibold text-[#262B43] dark:text-[#EAEAFF] text-sm">No Campuses Configured</div>
+            <p className="text-xs text-[#6D788D] dark:text-[#B6BEE3] max-w-md mx-auto">
               Your school has not provisioned any campus branches yet.
             </p>
           </div>
@@ -335,24 +337,26 @@ export default function CampusesPage() {
             {campuses.map((c) => (
               <div
                 key={c.id}
-                className={`p-6 rounded-3xl bg-[#161e31] border transition space-y-4 shadow-sm ${
-                  c.is_active ? "border-slate-800 hover:border-slate-700" : "border-rose-900/40 opacity-70"
+                className={`p-6 rounded-xl bg-white dark:bg-[#30334E] border transition space-y-4 shadow-card dark:shadow-card-dark ${
+                  c.is_active ? "border-[#262B43]/10 dark:border-[#EAEAFF]/10 hover:border-[#666CFF]/40" : "border-[#FF4D49]/30 opacity-70"
                 }`}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-purple-400" />
-                    <span className="font-extrabold text-sm text-white">{c.city || school?.city || "Lahore"}</span>
+                    <MapPin className="w-4 h-4 text-[#666CFF]" />
+                    <span className="font-bold text-sm text-[#262B43] dark:text-[#EAEAFF]">{c.city || school?.city || "Lahore"}</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     {c.is_main && (
-                      <span className="px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-bold text-[10px] border border-indigo-500/30">
+                      <span className="px-2 py-0.5 rounded-md bg-[#666CFF]/15 text-[#666CFF] font-semibold text-[10px]">
                         Primary Main
                       </span>
                     )}
                     <span
-                      className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
-                        c.is_active ? "bg-emerald-500/20 text-emerald-400" : "bg-rose-500/20 text-rose-400"
+                      className={`px-2 py-0.5 rounded-md font-semibold text-[10px] ${
+                        c.is_active
+                          ? "bg-[#72E128]/15 text-[#3c8213] dark:text-[#72E128]"
+                          : "bg-[#FF4D49]/15 text-[#d82420] dark:text-[#FF4D49]"
                       }`}
                     >
                       ● {c.is_active ? "Active" : "Inactive"}
@@ -361,30 +365,30 @@ export default function CampusesPage() {
                 </div>
 
                 <div>
-                  <h3 className="font-bold text-sm text-white">{c.name}</h3>
-                  <div className="text-xs font-mono text-indigo-400 mt-0.5 flex items-center gap-2">
+                  <h3 className="font-semibold text-sm text-[#262B43] dark:text-[#EAEAFF]">{c.name}</h3>
+                  <div className="text-xs font-mono text-[#666CFF] mt-0.5 flex items-center gap-2">
                     <span>Code: {c.code}</span>
                     <span>•</span>
                     <span>{school?.slug || "portal"}.optimusorien.cloud</span>
                   </div>
                   {c.address && (
-                    <p className="text-[11px] text-slate-400 mt-1 line-clamp-1">{c.address}</p>
+                    <p className="text-[11px] text-[#6D788D] dark:text-[#B6BEE3] mt-1 line-clamp-1">{c.address}</p>
                   )}
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-800 text-xs">
-                  <div className="p-2.5 rounded-xl bg-[#111827]">
-                    <div className="text-[10px] text-slate-500">Students</div>
-                    <div className="font-extrabold text-white mt-0.5">{c.students_count ?? "—"}</div>
+                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[#262B43]/8 dark:border-[#EAEAFF]/8 text-xs">
+                  <div className="p-2.5 rounded-lg bg-[#F7F7F9] dark:bg-[#282A42]">
+                    <div className="text-[10px] text-[#6D788D] dark:text-[#B6BEE3]">Students</div>
+                    <div className="font-bold text-[#262B43] dark:text-[#EAEAFF] mt-0.5">{c.students_count ?? "—"}</div>
                   </div>
-                  <div className="p-2.5 rounded-xl bg-[#111827]">
-                    <div className="text-[10px] text-slate-500">Faculty and Staff</div>
-                    <div className="font-extrabold text-white mt-0.5">{c.staff_count ?? "—"}</div>
+                  <div className="p-2.5 rounded-lg bg-[#F7F7F9] dark:bg-[#282A42]">
+                    <div className="text-[10px] text-[#6D788D] dark:text-[#B6BEE3]">Faculty & Staff</div>
+                    <div className="font-bold text-[#262B43] dark:text-[#EAEAFF] mt-0.5">{c.staff_count ?? "—"}</div>
                   </div>
                 </div>
 
                 {/* Campus Actions */}
-                <div className="pt-2 flex items-center justify-between gap-2 border-t border-slate-800">
+                <div className="pt-2 flex items-center justify-between gap-2 border-t border-[#262B43]/8 dark:border-[#EAEAFF]/8">
                   <button
                     onClick={() => {
                       setSelectedCampus(c);
@@ -398,21 +402,22 @@ export default function CampusesPage() {
                       });
                       setShowEditModal(true);
                     }}
-                    className="flex-1 py-1.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition flex items-center justify-center gap-1.5"
+                    className="flex-1 py-1.5 px-3 rounded-md border border-[#262B43]/15 dark:border-[#EAEAFF]/15 hover:bg-black/5 dark:hover:bg-white/5 text-[#262B43] dark:text-[#EAEAFF] text-xs font-medium transition flex items-center justify-center gap-1.5"
                   >
-                    <Edit2 className="w-3.5 h-3.5 text-indigo-400" />
+                    <Edit2 className="w-3.5 h-3.5 text-[#666CFF]" />
                     <span>Edit Details</span>
                   </button>
 
                   {!c.is_main && (
                     <button
                       onClick={() => handleToggleCampusActive(c)}
-                      className={`p-2 rounded-xl transition ${
+                      className={`p-2 rounded-md transition ${
                         c.is_active
-                          ? "bg-rose-950/40 text-rose-400 hover:bg-rose-900/60"
-                          : "bg-emerald-950/40 text-emerald-400 hover:bg-emerald-900/60"
+                          ? "bg-[#FF4D49]/15 text-[#d82420] dark:text-[#FF4D49] hover:bg-[#FF4D49]/25"
+                          : "bg-[#72E128]/15 text-[#3c8213] dark:text-[#72E128] hover:bg-[#72E128]/25"
                       }`}
                       title={c.is_active ? "Deactivate Campus" : "Activate Campus"}
+                      aria-label={c.is_active ? "Deactivate Campus" : "Activate Campus"}
                     >
                       <Power className="w-3.5 h-3.5" />
                     </button>
@@ -425,93 +430,93 @@ export default function CampusesPage() {
 
         {/* Add Campus Modal */}
         {showAddModal && (
-          <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="max-w-md w-full rounded-3xl bg-[#161e31] border border-slate-700 shadow-2xl p-6 space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="font-bold text-base text-white flex items-center gap-2">
-                  <Building2 className="w-5 h-5 text-indigo-400" />
+          <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="max-w-md w-full rounded-xl bg-white dark:bg-[#30334E] border border-[#262B43]/10 dark:border-[#EAEAFF]/10 shadow-2xl p-6 space-y-4 text-[#262B43] dark:text-[#EAEAFF]">
+              <div className="flex items-center justify-between pb-2 border-b border-[#262B43]/8 dark:border-[#EAEAFF]/8">
+                <h3 className="font-semibold text-base flex items-center gap-2">
+                  <Building2 className="w-5 h-5 text-[#666CFF]" />
                   <span>Provision New Campus Branch</span>
                 </h3>
                 <button
                   onClick={() => setShowAddModal(false)}
-                  className="text-slate-400 hover:text-white font-bold"
+                  className="p-1 rounded-md text-[#6D788D] hover:text-[#262B43] dark:hover:text-white"
                 >
-                  &times;
+                  <X className="w-5 h-5" />
                 </button>
               </div>
 
               <form onSubmit={handleCreateCampus} className="space-y-3 text-xs">
                 <div>
-                  <label className="block text-slate-300 font-bold mb-1">Campus Name *</label>
+                  <label className="block text-[#6D788D] dark:text-[#B6BEE3] font-medium mb-1">Campus Name *</label>
                   <input
                     type="text"
                     required
                     value={campusForm.name}
                     onChange={(e) => setCampusForm({ ...campusForm, name: e.target.value })}
                     placeholder="e.g. Johar Town Branch"
-                    className="w-full px-3 py-2 rounded-xl bg-[#111827] border border-slate-700 text-white outline-none focus:border-indigo-500"
+                    className="w-full px-3 py-2 rounded-md border border-[#262B43]/15 dark:border-[#EAEAFF]/15 bg-transparent text-[#262B43] dark:text-[#EAEAFF] outline-none focus:border-[#666CFF]"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-slate-300 font-bold mb-1">Campus Code *</label>
+                    <label className="block text-[#6D788D] dark:text-[#B6BEE3] font-medium mb-1">Campus Code *</label>
                     <input
                       type="text"
                       required
                       value={campusForm.code}
                       onChange={(e) => setCampusForm({ ...campusForm, code: e.target.value.toUpperCase() })}
                       placeholder="e.g. JT"
-                      className="w-full px-3 py-2 rounded-xl bg-[#111827] border border-slate-700 text-white font-mono uppercase outline-none focus:border-indigo-500"
+                      className="w-full px-3 py-2 rounded-md border border-[#262B43]/15 dark:border-[#EAEAFF]/15 bg-transparent text-[#262B43] dark:text-[#EAEAFF] font-mono uppercase outline-none focus:border-[#666CFF]"
                     />
                   </div>
                   <div>
-                    <label className="block text-slate-300 font-bold mb-1">City *</label>
+                    <label className="block text-[#6D788D] dark:text-[#B6BEE3] font-medium mb-1">City *</label>
                     <input
                       type="text"
                       required
                       value={campusForm.city}
                       onChange={(e) => setCampusForm({ ...campusForm, city: e.target.value })}
                       placeholder="e.g. Lahore"
-                      className="w-full px-3 py-2 rounded-xl bg-[#111827] border border-slate-700 text-white outline-none focus:border-indigo-500"
+                      className="w-full px-3 py-2 rounded-md border border-[#262B43]/15 dark:border-[#EAEAFF]/15 bg-transparent text-[#262B43] dark:text-[#EAEAFF] outline-none focus:border-[#666CFF]"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-slate-300 font-bold mb-1">Address</label>
+                  <label className="block text-[#6D788D] dark:text-[#B6BEE3] font-medium mb-1">Address</label>
                   <input
                     type="text"
                     value={campusForm.address}
                     onChange={(e) => setCampusForm({ ...campusForm, address: e.target.value })}
                     placeholder="e.g. Block G, Phase 2, Johar Town"
-                    className="w-full px-3 py-2 rounded-xl bg-[#111827] border border-slate-700 text-white outline-none focus:border-indigo-500"
+                    className="w-full px-3 py-2 rounded-md border border-[#262B43]/15 dark:border-[#EAEAFF]/15 bg-transparent text-[#262B43] dark:text-[#EAEAFF] outline-none focus:border-[#666CFF]"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-slate-300 font-bold mb-1">Contact Phone</label>
+                  <label className="block text-[#6D788D] dark:text-[#B6BEE3] font-medium mb-1">Contact Phone</label>
                   <input
                     type="text"
                     value={campusForm.phone}
                     onChange={(e) => setCampusForm({ ...campusForm, phone: e.target.value })}
                     placeholder="042-35800000"
-                    className="w-full px-3 py-2 rounded-xl bg-[#111827] border border-slate-700 text-white outline-none focus:border-indigo-500"
+                    className="w-full px-3 py-2 rounded-md border border-[#262B43]/15 dark:border-[#EAEAFF]/15 bg-transparent text-[#262B43] dark:text-[#EAEAFF] outline-none focus:border-[#666CFF]"
                   />
                 </div>
 
-                <div className="pt-2 flex items-center justify-end gap-2">
+                <div className="pt-2 flex items-center justify-end gap-2 border-t border-[#262B43]/8 dark:border-[#EAEAFF]/8">
                   <button
                     type="button"
                     onClick={() => setShowAddModal(false)}
-                    className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 font-bold hover:bg-slate-700"
+                    className="px-4 py-2 rounded-md border border-[#262B43]/15 dark:border-[#EAEAFF]/15 text-[#6D788D] hover:bg-black/5 dark:hover:bg-white/5 font-medium"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={modalLoading}
-                    className="px-5 py-2 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-700 disabled:opacity-50"
+                    className="px-5 py-2 rounded-md bg-[#666CFF] text-white font-semibold hover:bg-[#5C61E6] shadow-primary disabled:opacity-50"
                   >
                     {modalLoading ? "Provisioning..." : "Create Branch"}
                   </button>
@@ -523,76 +528,76 @@ export default function CampusesPage() {
 
         {/* Edit Campus Modal */}
         {showEditModal && selectedCampus && (
-          <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="max-w-md w-full rounded-3xl bg-[#161e31] border border-slate-700 shadow-2xl p-6 space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="font-bold text-base text-white flex items-center gap-2">
-                  <Edit2 className="w-5 h-5 text-indigo-400" />
+          <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="max-w-md w-full rounded-xl bg-white dark:bg-[#30334E] border border-[#262B43]/10 dark:border-[#EAEAFF]/10 shadow-2xl p-6 space-y-4 text-[#262B43] dark:text-[#EAEAFF]">
+              <div className="flex items-center justify-between pb-2 border-b border-[#262B43]/8 dark:border-[#EAEAFF]/8">
+                <h3 className="font-semibold text-base flex items-center gap-2">
+                  <Edit2 className="w-5 h-5 text-[#666CFF]" />
                   <span>Edit Campus ({selectedCampus.code})</span>
                 </h3>
                 <button
                   onClick={() => setShowEditModal(false)}
-                  className="text-slate-400 hover:text-white font-bold"
+                  className="p-1 rounded-md text-[#6D788D] hover:text-[#262B43] dark:hover:text-white"
                 >
-                  &times;
+                  <X className="w-5 h-5" />
                 </button>
               </div>
 
               <form onSubmit={handleUpdateCampus} className="space-y-3 text-xs">
                 <div>
-                  <label className="block text-slate-300 font-bold mb-1">Campus Name *</label>
+                  <label className="block text-[#6D788D] dark:text-[#B6BEE3] font-medium mb-1">Campus Name *</label>
                   <input
                     type="text"
                     required
                     value={campusForm.name}
                     onChange={(e) => setCampusForm({ ...campusForm, name: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-[#111827] border border-slate-700 text-white outline-none focus:border-indigo-500"
+                    className="w-full px-3 py-2 rounded-md border border-[#262B43]/15 dark:border-[#EAEAFF]/15 bg-transparent text-[#262B43] dark:text-[#EAEAFF] outline-none focus:border-[#666CFF]"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-slate-300 font-bold mb-1">City *</label>
+                  <label className="block text-[#6D788D] dark:text-[#B6BEE3] font-medium mb-1">City *</label>
                   <input
                     type="text"
                     required
                     value={campusForm.city}
                     onChange={(e) => setCampusForm({ ...campusForm, city: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-[#111827] border border-slate-700 text-white outline-none focus:border-indigo-500"
+                    className="w-full px-3 py-2 rounded-md border border-[#262B43]/15 dark:border-[#EAEAFF]/15 bg-transparent text-[#262B43] dark:text-[#EAEAFF] outline-none focus:border-[#666CFF]"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-slate-300 font-bold mb-1">Address</label>
+                  <label className="block text-[#6D788D] dark:text-[#B6BEE3] font-medium mb-1">Address</label>
                   <input
                     type="text"
                     value={campusForm.address}
                     onChange={(e) => setCampusForm({ ...campusForm, address: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-[#111827] border border-slate-700 text-white outline-none focus:border-indigo-500"
+                    className="w-full px-3 py-2 rounded-md border border-[#262B43]/15 dark:border-[#EAEAFF]/15 bg-transparent text-[#262B43] dark:text-[#EAEAFF] outline-none focus:border-[#666CFF]"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-slate-300 font-bold mb-1">Contact Phone</label>
+                  <label className="block text-[#6D788D] dark:text-[#B6BEE3] font-medium mb-1">Contact Phone</label>
                   <input
                     type="text"
                     value={campusForm.phone}
                     onChange={(e) => setCampusForm({ ...campusForm, phone: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-[#111827] border border-slate-700 text-white outline-none focus:border-indigo-500"
+                    className="w-full px-3 py-2 rounded-md border border-[#262B43]/15 dark:border-[#EAEAFF]/15 bg-transparent text-[#262B43] dark:text-[#EAEAFF] outline-none focus:border-[#666CFF]"
                   />
                 </div>
 
-                <div className="pt-2 flex items-center justify-end gap-2">
+                <div className="pt-2 flex items-center justify-end gap-2 border-t border-[#262B43]/8 dark:border-[#EAEAFF]/8">
                   <button
                     type="button"
                     onClick={() => setShowEditModal(false)}
-                    className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 font-bold hover:bg-slate-700"
+                    className="px-4 py-2 rounded-md border border-[#262B43]/15 dark:border-[#EAEAFF]/15 text-[#6D788D] hover:bg-black/5 dark:hover:bg-white/5 font-medium"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={modalLoading}
-                    className="px-5 py-2 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-700 disabled:opacity-50"
+                    className="px-5 py-2 rounded-md bg-[#666CFF] text-white font-semibold hover:bg-[#5C61E6] shadow-primary disabled:opacity-50"
                   >
                     {modalLoading ? "Saving..." : "Save Changes"}
                   </button>

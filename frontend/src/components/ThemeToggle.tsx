@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from "react";
+import { Sun, Moon } from "lucide-react";
 
 export function ThemeToggle() {
   const [darkMode, setDarkMode] = useState(false);
 
   useEffect(() => {
-    const isDark = document.documentElement.classList.contains('dark');
+    const isDark = document.documentElement.classList.contains("dark");
     setDarkMode(isDark);
   }, []);
 
@@ -14,20 +15,31 @@ export function ThemeToggle() {
     const newMode = !darkMode;
     setDarkMode(newMode);
     if (newMode) {
-      document.documentElement.classList.add('dark');
+      document.documentElement.classList.add("dark");
+      try {
+        localStorage.setItem("theme", "dark");
+      } catch (e) {}
     } else {
-      document.documentElement.classList.remove('dark');
+      document.documentElement.classList.remove("dark");
+      try {
+        localStorage.setItem("theme", "light");
+      } catch (e) {}
     }
   };
 
   return (
     <button
       onClick={toggleTheme}
-      className="p-1.5 text-xs font-semibold rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 transition"
-      title="Toggle Light/Dark Theme"
+      className="w-9 h-9 flex items-center justify-center rounded-lg text-[#262B43] dark:text-[#EAEAFF] hover:bg-[#666CFF]/10 transition-colors"
+      title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+      aria-label="Toggle Light/Dark Theme"
       type="button"
     >
-      <span>{darkMode ? '☀️ Light' : '🌙 Dark'}</span>
+      {darkMode ? (
+        <Sun className="w-5 h-5 text-[#FDB528] transition-transform hover:rotate-45" />
+      ) : (
+        <Moon className="w-5 h-5 text-[#6D788D] transition-transform hover:-rotate-12" />
+      )}
     </button>
   );
 }

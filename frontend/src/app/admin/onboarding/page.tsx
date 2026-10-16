@@ -103,7 +103,6 @@ export default function OnboardingCSVPage() {
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     setFileName(file.name);
     setDryRunDone(false);
     setPreviewRows([]);
@@ -112,8 +111,8 @@ export default function OnboardingCSVPage() {
     setErrorAlert("");
 
     const reader = new FileReader();
-    reader.onload = (event) => {
-      const text = event.target?.result as string;
+    reader.onload = (evt) => {
+      const text = evt.target?.result as string;
       setCsvText(text || "");
     };
     reader.readAsText(file);
@@ -121,37 +120,37 @@ export default function OnboardingCSVPage() {
 
   const handleRunDryRun = async () => {
     if (!csvText.trim()) {
-      setErrorAlert("Please upload a CSV file or paste CSV text to validate.");
+      setErrorAlert("Please paste or upload CSV data first.");
       return;
     }
 
     setValidating(true);
     setErrorAlert("");
     setStatusMessage("");
-    setDryRunDone(false);
     try {
-      const res: any = await apiRequest("/api/v1/core/bulk-import/", {
+      const res: any = await apiRequest("/api/v1/core/users/bulk-import/", {
         method: "POST",
         body: JSON.stringify({
           role: activeRole,
-          csv_text: csvText,
+          csv_data: csvText,
           dry_run: true,
         }),
       });
 
-      if (res.success) {
-        setTotalRows(res.total_rows || 0);
-        setValidCount(res.valid_count || 0);
-        setErrorCount(res.error_count || 0);
-        setPreviewRows(res.preview || []);
-        setRowErrors(res.errors || []);
-        setDryRunDone(true);
-        setStatusMessage(res.message || "Dry-run preview validated successfully.");
+      setDryRunDone(true);
+      setTotalRows(res.total_rows || 0);
+      setValidCount(res.valid_count || 0);
+      setErrorCount(res.error_count || 0);
+      setPreviewRows(res.preview_rows || []);
+      setRowErrors(res.row_errors || []);
+
+      if (res.error_count > 0) {
+        setErrorAlert(`Dry run detected ${res.error_count} row errors. Fix them before committing.`);
       } else {
-        setErrorAlert(res.message || "Dry run validation failed.");
+        setStatusMessage(`Dry run passed! All ${res.valid_count} rows are valid and ready for commit.`);
       }
     } catch (err: any) {
-      setErrorAlert(err.message || "Validation failed on the server.");
+      setErrorAlert(err.message || "Failed to execute dry-run validation.");
     } finally {
       setValidating(false);
     }
@@ -159,49 +158,54 @@ export default function OnboardingCSVPage() {
 
   const handleCommitImport = async () => {
     if (!csvText.trim()) return;
-
     setImporting(true);
     setErrorAlert("");
     setStatusMessage("");
     try {
-      const res: any = await apiRequest("/api/v1/core/bulk-import/", {
+      const res: any = await apiRequest("/api/v1/core/users/bulk-import/", {
         method: "POST",
         body: JSON.stringify({
           role: activeRole,
-          csv_text: csvText,
+          csv_data: csvText,
           dry_run: false,
         }),
       });
 
-      if (res.success) {
-        setStatusMessage(res.message || `Successfully created ${res.imported_count} accounts!`);
-        setImportedSlips(res.credential_slips || []);
-        setDryRunDone(false);
-      } else {
-        setErrorAlert(res.message || "Import failed.");
-        if (res.errors) setRowErrors(res.errors);
-      }
+      setStatusMessage(`Successfully provisioned ${res.imported_count || validCount} ${activeRole} accounts!`);
+      setImportedSlips(res.credential_slips || []);
+      setDryRunDone(false);
+      setCsvText("");
+      setFileName("");
     } catch (err: any) {
-      setErrorAlert(err.message || "Import failed on the server.");
+      setErrorAlert(err.message || "Failed to commit user ingestion.");
     } finally {
       setImporting(false);
     }
   };
 
   return (
-    <AppShell activeRole={getCurrentUser()?.role || "admin"} title="School Setup & Bulk Data Onboarding">
-      <div className="space-y-6">
+    <AppShell
+      activeRole={getCurrentUser()?.role || "admin"}
+      title="Bulk CSV Onboarding"
+      userName={getCurrentUser()?.full_name || getCurrentUser()?.username || "Admin Office"}
+      schoolName={getCurrentUser()?.school?.name || "Optimus Orien"}
+      schoolSlug={getCurrentUser()?.school?.slug || "portal"}
+      breadcrumbs={[
+        { label: "Onboarding & CSV Import" },
+      ]}
+    >
+      <div className="space-y-6 max-w-7xl mx-auto">
         {/* Top Header Card */}
-        <div className="p-6 rounded-3xl bg-gradient-to-r from-blue-900 via-indigo-950 to-slate-900 border border-indigo-700/50 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="rounded-xl bg-white dark:bg-[#30334E] border border-[#262B43]/10 dark:border-[#EAEAFF]/10 p-6 shadow-card dark:shadow-card-dark flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div>
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 text-xs font-bold mb-2">
-              <FileSpreadsheet className="w-3.5 h-3.5 text-indigo-400" />
-              <span>Section 6: Production Bulk Ingestion & Migration Hub</span>
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-[#666CFF]/12 text-[#666CFF] text-xs font-semibold mb-2">
+              <FileSpreadsheet className="w-3.5 h-3.5" />
+              <span>Spec Section 23: Audited Ingestion & Credential Generation</span>
             </div>
-            <h1 className="text-xl sm:text-2xl font-black text-white">
+            <h1 className="text-xl sm:text-2xl font-semibold text-[#262B43] dark:text-[#EAEAFF] tracking-tight">
               Bulk CSV Import & User Onboarding
             </h1>
-            <p className="text-xs text-slate-300 mt-1 max-w-xl">
+            <p className="text-xs text-[#6D788D] dark:text-[#B6BEE3] mt-1 max-w-xl">
               Deterministic 2-step onboarding pipeline: automated CSV formula-injection mitigation, duplicate detection, row-level error reporting, and one-time temporary credential slip generation.
             </p>
           </div>
@@ -209,7 +213,7 @@ export default function OnboardingCSVPage() {
           <div className="flex items-center gap-3">
             <Link
               href="/admin/people"
-              className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700 transition"
+              className="px-4 py-2 rounded-md border border-[#262B43]/15 dark:border-[#EAEAFF]/15 hover:bg-black/5 dark:hover:bg-white/5 text-[#262B43] dark:text-[#EAEAFF] text-xs font-semibold transition"
             >
               People Directory
             </Link>
@@ -218,21 +222,21 @@ export default function OnboardingCSVPage() {
 
         {/* Notifications */}
         {errorAlert && (
-          <div className="p-4 rounded-2xl bg-rose-950/60 border border-rose-800 text-rose-300 text-xs flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 shrink-0 text-rose-400" />
+          <div className="p-4 rounded-lg bg-[#FF4D49]/12 border border-[#FF4D49]/30 text-[#d82420] dark:text-[#FF4D49] text-xs flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 shrink-0" />
             <span>{errorAlert}</span>
           </div>
         )}
 
         {statusMessage && (
-          <div className="p-4 rounded-2xl bg-emerald-950/60 border border-emerald-800 text-emerald-300 text-xs flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+          <div className="p-4 rounded-lg bg-[#72E128]/15 border border-[#72E128]/30 text-[#3c8213] dark:text-[#72E128] text-xs flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 shrink-0" />
             <span>{statusMessage}</span>
           </div>
         )}
 
         {/* Role Selector Tabs */}
-        <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-[#161e31] border border-slate-800 text-xs font-bold w-fit">
+        <div className="flex items-center gap-1 p-1 rounded-lg bg-white dark:bg-[#30334E] border border-[#262B43]/10 dark:border-[#EAEAFF]/10 text-xs font-medium w-fit shadow-xs">
           {(["student", "teacher", "accountant", "parent"] as const).map((r) => (
             <button
               key={r}
@@ -243,8 +247,8 @@ export default function OnboardingCSVPage() {
                 setRowErrors([]);
                 setImportedSlips([]);
               }}
-              className={`px-4 py-2 rounded-xl transition capitalize ${
-                activeRole === r ? "bg-indigo-600 text-white shadow-md" : "text-slate-400 hover:text-white"
+              className={`px-4 py-1.5 rounded-md transition capitalize ${
+                activeRole === r ? "bg-[#666CFF] text-white font-semibold shadow-xs" : "text-[#6D788D] dark:text-[#B6BEE3] hover:text-[#666CFF] hover:bg-[#666CFF]/10"
               }`}
             >
               {r}s
@@ -255,20 +259,20 @@ export default function OnboardingCSVPage() {
         {/* Upload & CSV Workspace */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left: Input & Options */}
-          <div className="lg:col-span-1 p-6 rounded-3xl bg-[#161e31] border border-slate-800 space-y-4">
-            <h3 className="font-bold text-sm text-white flex items-center gap-2">
-              <Upload className="w-4 h-4 text-indigo-400" />
+          <div className="lg:col-span-1 p-6 rounded-xl bg-white dark:bg-[#30334E] border border-[#262B43]/10 dark:border-[#EAEAFF]/10 shadow-card dark:shadow-card-dark space-y-4">
+            <h3 className="font-semibold text-sm text-[#262B43] dark:text-[#EAEAFF] flex items-center gap-2">
+              <Upload className="w-4 h-4 text-[#666CFF]" />
               <span>1. Upload or Paste CSV</span>
             </h3>
 
             {/* File Upload Box */}
-            <div className="border-2 border-dashed border-slate-700 hover:border-indigo-500 rounded-2xl p-6 text-center space-y-2 transition bg-[#111827]">
-              <Upload className="w-8 h-8 mx-auto text-slate-500" />
-              <div className="text-xs font-bold text-slate-200">
+            <div className="border-2 border-dashed border-[#262B43]/15 dark:border-[#EAEAFF]/15 hover:border-[#666CFF] rounded-xl p-6 text-center space-y-2 transition bg-[#F7F7F9] dark:bg-[#282A42]">
+              <Upload className="w-8 h-8 mx-auto text-[#6D788D]" />
+              <div className="text-xs font-semibold text-[#262B43] dark:text-[#EAEAFF]">
                 {fileName ? fileName : "Upload CSV File"}
               </div>
-              <p className="text-[11px] text-slate-500">UTF-8 encoded comma-separated file</p>
-              <label className="inline-block px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-bold cursor-pointer transition">
+              <p className="text-[11px] text-[#6D788D]">UTF-8 encoded comma-separated file</p>
+              <label className="inline-block px-3.5 py-1.5 rounded-md bg-white dark:bg-[#30334E] border border-[#262B43]/15 dark:border-[#EAEAFF]/15 text-[#262B43] dark:text-[#EAEAFF] hover:text-[#666CFF] text-xs font-medium cursor-pointer transition shadow-xs">
                 Choose File
                 <input
                   type="file"
@@ -283,15 +287,15 @@ export default function OnboardingCSVPage() {
               <button
                 type="button"
                 onClick={handleDownloadTemplate}
-                className="flex-1 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition flex items-center justify-center gap-1.5 border border-slate-700"
+                className="flex-1 px-3 py-2 rounded-md border border-[#262B43]/15 dark:border-[#EAEAFF]/15 text-[#6D788D] dark:text-[#B6BEE3] hover:text-[#666CFF] text-xs font-medium transition flex items-center justify-center gap-1.5"
               >
-                <Download className="w-3.5 h-3.5 text-indigo-400" />
+                <Download className="w-3.5 h-3.5 text-[#666CFF]" />
                 <span>Template</span>
               </button>
               <button
                 type="button"
                 onClick={handleLoadSampleInEditor}
-                className="flex-1 px-3 py-2 rounded-xl bg-indigo-950/60 hover:bg-indigo-900/60 text-indigo-300 text-xs font-bold transition border border-indigo-800/40"
+                className="flex-1 px-3 py-2 rounded-md bg-[#666CFF]/10 hover:bg-[#666CFF]/20 text-[#666CFF] text-xs font-semibold transition"
               >
                 Load Sample
               </button>
@@ -302,7 +306,7 @@ export default function OnboardingCSVPage() {
                 type="button"
                 disabled={validating || !csvText.trim()}
                 onClick={handleRunDryRun}
-                className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-lg transition flex items-center justify-center gap-2 disabled:opacity-50"
+                className="w-full py-2.5 rounded-md bg-[#666CFF] hover:bg-[#5C61E6] text-white text-xs font-semibold shadow-primary transition flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 {validating ? (
                   <>
@@ -320,13 +324,13 @@ export default function OnboardingCSVPage() {
           </div>
 
           {/* Right: CSV Raw Content Editor */}
-          <div className="lg:col-span-2 p-6 rounded-3xl bg-[#161e31] border border-slate-800 space-y-4">
+          <div className="lg:col-span-2 p-6 rounded-xl bg-white dark:bg-[#30334E] border border-[#262B43]/10 dark:border-[#EAEAFF]/10 shadow-card dark:shadow-card-dark space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="font-bold text-sm text-white flex items-center gap-2">
-                <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+              <h3 className="font-semibold text-sm text-[#262B43] dark:text-[#EAEAFF] flex items-center gap-2">
+                <FileSpreadsheet className="w-4 h-4 text-[#3c8213] dark:text-[#72E128]" />
                 <span>CSV Raw Text Content</span>
               </h3>
-              <span className="text-[11px] text-slate-500 font-mono">
+              <span className="text-[11px] text-[#6D788D] font-mono">
                 {csvText.split("\n").filter((l) => l.trim()).length} lines
               </span>
             </div>
@@ -339,10 +343,10 @@ export default function OnboardingCSVPage() {
                 setDryRunDone(false);
               }}
               placeholder={`first_name,last_name,admission_number,phone\nAli,Raza,ADM-001,03001234567`}
-              className="w-full p-3.5 rounded-2xl bg-[#0b0f19] border border-slate-800 text-emerald-400 font-mono text-xs outline-none focus:border-indigo-500 leading-relaxed"
+              className="w-full p-3.5 rounded-md bg-[#F7F7F9] dark:bg-[#282A42] border border-[#262B43]/15 dark:border-[#EAEAFF]/15 text-[#262B43] dark:text-[#EAEAFF] font-mono text-xs outline-none focus:border-[#666CFF] leading-relaxed"
             />
 
-            <div className="flex items-center justify-between text-[11px] text-slate-400">
+            <div className="flex items-center justify-between text-[11px] text-[#6D788D]">
               <span>Security Invariant: Formulas starting with =, +, -, @ are sanitized.</span>
               <span>Batch Limit: 500 rows</span>
             </div>
@@ -351,25 +355,25 @@ export default function OnboardingCSVPage() {
 
         {/* Validation Dry-Run Results Card */}
         {dryRunDone && (
-          <div className="p-6 rounded-3xl bg-[#161e31] border border-slate-800 space-y-4">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+          <div className="p-6 rounded-xl bg-white dark:bg-[#30334E] border border-[#262B43]/10 dark:border-[#EAEAFF]/10 shadow-card dark:shadow-card-dark space-y-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-[#262B43]/8 dark:border-[#EAEAFF]/8 pb-4">
               <div>
-                <h3 className="font-bold text-base text-white flex items-center gap-2">
-                  <FileCheck className="w-5 h-5 text-indigo-400" />
+                <h3 className="font-semibold text-base text-[#262B43] dark:text-[#EAEAFF] flex items-center gap-2">
+                  <FileCheck className="w-5 h-5 text-[#666CFF]" />
                   <span>Dry-Run Validation Report</span>
                 </h3>
-                <p className="text-xs text-slate-400 mt-0.5">
+                <p className="text-xs text-[#6D788D] dark:text-[#B6BEE3] mt-0.5">
                   Verify parsed accounts before committing creation to database.
                 </p>
               </div>
 
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-2 text-xs">
-                  <span className="px-3 py-1 rounded-xl bg-emerald-950/60 border border-emerald-800/40 text-emerald-300 font-bold">
+                  <span className="px-3 py-1 rounded-md bg-[#72E128]/15 border border-[#72E128]/30 text-[#3c8213] dark:text-[#72E128] font-bold">
                     {validCount} Valid
                   </span>
                   {errorCount > 0 && (
-                    <span className="px-3 py-1 rounded-xl bg-rose-950/60 border border-rose-800/40 text-rose-300 font-bold">
+                    <span className="px-3 py-1 rounded-md bg-[#FF4D49]/15 border border-[#FF4D49]/30 text-[#d82420] dark:text-[#FF4D49] font-bold">
                       {errorCount} Errors
                     </span>
                   )}
@@ -379,11 +383,11 @@ export default function OnboardingCSVPage() {
                   type="button"
                   disabled={importing || errorCount > 0 || validCount === 0}
                   onClick={handleCommitImport}
-                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-lg transition flex items-center gap-1.5 disabled:opacity-50"
+                  className="px-5 py-2 rounded-md bg-[#72E128] hover:bg-[#60c020] text-black font-bold text-xs shadow-md transition flex items-center gap-1.5 disabled:opacity-50"
                 >
                   {importing ? (
                     <>
-                      <RotateCw className="w-4 h-4 animate-spin text-white" />
+                      <RotateCw className="w-4 h-4 animate-spin text-black" />
                       <span>Creating Accounts...</span>
                     </>
                   ) : (
@@ -398,14 +402,14 @@ export default function OnboardingCSVPage() {
 
             {/* Error alerts if any */}
             {rowErrors.length > 0 && (
-              <div className="p-4 rounded-2xl bg-rose-950/40 border border-rose-900/60 space-y-2">
-                <div className="text-xs font-bold text-rose-300 flex items-center gap-1.5">
-                  <AlertTriangle className="w-4 h-4 text-rose-400" />
+              <div className="p-4 rounded-lg bg-[#FF4D49]/12 border border-[#FF4D49]/30 space-y-2">
+                <div className="text-xs font-bold text-[#d82420] dark:text-[#FF4D49] flex items-center gap-1.5">
+                  <AlertTriangle className="w-4 h-4" />
                   <span>Row Validation Errors Detected (Must be resolved before import):</span>
                 </div>
                 <div className="space-y-1 max-h-40 overflow-y-auto">
                   {rowErrors.map((re, idx) => (
-                    <div key={idx} className="text-[11px] text-rose-200 font-mono">
+                    <div key={idx} className="text-[11px] text-[#d82420] dark:text-[#FF4D49] font-mono">
                       Row {re.row} ({re.username || "unknown"}): {re.errors.join(", ")}
                     </div>
                   ))}
@@ -415,9 +419,9 @@ export default function OnboardingCSVPage() {
 
             {/* Preview Table */}
             {previewRows.length > 0 && (
-              <div className="overflow-x-auto rounded-2xl border border-slate-800">
+              <div className="overflow-x-auto rounded-lg border border-[#262B43]/10 dark:border-[#EAEAFF]/10">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-[#111827] text-slate-400 text-[10px] uppercase font-bold tracking-wider">
+                  <thead className="bg-[#F5F5F7] dark:bg-[#3A3E5B] text-[#262B43] dark:text-[#EAEAFF] text-[10px] uppercase font-semibold tracking-wider border-b border-[#262B43]/8 dark:border-[#EAEAFF]/8">
                     <tr>
                       <th className="px-4 py-3">Row</th>
                       <th className="px-4 py-3">Name</th>
@@ -427,16 +431,16 @@ export default function OnboardingCSVPage() {
                       <th className="px-4 py-3">Role</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800 text-slate-300">
+                  <tbody className="divide-y divide-[#262B43]/8 dark:divide-[#EAEAFF]/8 text-[#262B43] dark:text-[#EAEAFF]">
                     {previewRows.map((r) => (
-                      <tr key={r.row_number} className="hover:bg-slate-800/40">
-                        <td className="px-4 py-2.5 font-mono text-slate-500">#{r.row_number}</td>
-                        <td className="px-4 py-2.5 font-bold text-white">
+                      <tr key={r.row_number} className="hover:bg-[#666CFF]/4 transition">
+                        <td className="px-4 py-2.5 font-mono text-[#6D788D]">#{r.row_number}</td>
+                        <td className="px-4 py-2.5 font-semibold">
                           {r.first_name} {r.last_name}
                         </td>
-                        <td className="px-4 py-2.5 font-mono text-indigo-400">{r.username}</td>
-                        <td className="px-4 py-2.5 text-slate-400">{r.email || r.phone || "—"}</td>
-                        <td className="px-4 py-2.5 font-mono text-slate-400">
+                        <td className="px-4 py-2.5 font-mono text-[#666CFF]">{r.username}</td>
+                        <td className="px-4 py-2.5 text-[#6D788D]">{r.email || r.phone || "—"}</td>
+                        <td className="px-4 py-2.5 font-mono text-[#6D788D]">
                           {r.admission_number || r.designation || "—"}
                         </td>
                         <td className="px-4 py-2.5 capitalize">{activeRole}</td>
@@ -451,17 +455,17 @@ export default function OnboardingCSVPage() {
 
         {/* Ingested Accounts & Credential Slips */}
         {importedSlips.length > 0 && (
-          <div className="p-6 rounded-3xl bg-[#161e31] border border-emerald-800/40 space-y-4 shadow-xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div className="p-6 rounded-xl bg-white dark:bg-[#30334E] border border-[#72E128]/30 space-y-4 shadow-card dark:shadow-card-dark">
+            <div className="flex items-center justify-between border-b border-[#262B43]/8 dark:border-[#EAEAFF]/8 pb-3">
               <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-                <h3 className="font-bold text-base text-white">
+                <CheckCircle2 className="w-5 h-5 text-[#3c8213] dark:text-[#72E128]" />
+                <h3 className="font-semibold text-base text-[#262B43] dark:text-[#EAEAFF]">
                   Batch One-Time Credential Slips ({importedSlips.length})
                 </h3>
               </div>
               <button
                 onClick={() => window.print()}
-                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-md"
+                className="px-4 py-2 rounded-md bg-[#666CFF] hover:bg-[#5C61E6] text-white text-xs font-semibold transition flex items-center gap-1.5 shadow-primary"
               >
                 <Printer className="w-4 h-4" />
                 <span>Print All Slips</span>
@@ -472,28 +476,28 @@ export default function OnboardingCSVPage() {
               {importedSlips.map((slip, idx) => (
                 <div
                   key={idx}
-                  className="p-4 rounded-2xl bg-[#111827] border border-slate-800 text-xs space-y-2 relative"
+                  className="p-4 rounded-lg bg-[#F7F7F9] dark:bg-[#282A42] border border-[#262B43]/10 dark:border-[#EAEAFF]/10 text-xs space-y-2 relative"
                 >
                   <div className="flex justify-between items-start">
                     <div>
-                      <div className="font-bold text-white">
+                      <div className="font-semibold text-[#262B43] dark:text-[#EAEAFF]">
                         {slip.first_name} {slip.last_name}
                       </div>
-                      <div className="text-[10px] text-slate-400 capitalize">{slip.role}</div>
+                      <div className="text-[10px] text-[#6D788D] capitalize">{slip.role}</div>
                     </div>
-                    <span className="text-[10px] font-mono text-slate-500">{slip.school_code}</span>
+                    <span className="text-[10px] font-mono text-[#666CFF] font-bold">{slip.school_code}</span>
                   </div>
 
-                  <div className="p-2 rounded-xl bg-[#0b0f19] border border-slate-800 space-y-1 font-mono text-[11px]">
-                    <div className="text-slate-400">
-                      User: <span className="text-indigo-400 font-bold">{slip.username}</span>
+                  <div className="p-2 rounded-md bg-white dark:bg-[#30334E] border border-[#262B43]/8 dark:border-[#EAEAFF]/8 space-y-1 font-mono text-[11px]">
+                    <div className="text-[#6D788D]">
+                      User: <span className="text-[#666CFF] font-bold">{slip.username}</span>
                     </div>
-                    <div className="text-slate-400">
-                      Temp Pwd: <span className="text-emerald-400 font-bold">{slip.temporary_password}</span>
+                    <div className="text-[#6D788D]">
+                      Temp Pwd: <span className="text-[#3c8213] dark:text-[#72E128] font-bold">{slip.temporary_password}</span>
                     </div>
                   </div>
 
-                  <div className="text-[10px] text-amber-400 flex items-center gap-1">
+                  <div className="text-[10px] text-[#FDB528] flex items-center gap-1 font-medium">
                     <Lock className="w-3 h-3 shrink-0" />
                     <span>Must change password on first sign-in</span>
                   </div>
