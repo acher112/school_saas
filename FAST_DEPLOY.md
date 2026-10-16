@@ -70,7 +70,7 @@ $env:MIGRATION_DATABASE_URL = "postgres://school_saas_owner:<OWNER_PASSWORD_HERE
    - **Root Directory:** `backend`
    - **Environment:** `Python 3`
    - **Build Command:** `pip install -r requirements.txt && python manage.py collectstatic --no-input`
-   - **Start Command:** `gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 3 --threads 2`
+   - **Start Command:** `python scripts/auto_migrate.py && gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 3 --threads 2`
    - **Health Check Path:** `/api/health/`
 4. Set Environment Variables (Click **Add Environment Variable**):
 

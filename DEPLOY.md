@@ -135,7 +135,7 @@ The terminal prints the generated passwords once. Save them securely.
    - **Root Directory:** `backend`
    - **Environment:** `Python 3`
    - **Build Command:** `pip install -r requirements.txt && python manage.py collectstatic --no-input`
-   - **Start Command:** `gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 3 --threads 2`
+   - **Start Command:** `python scripts/auto_migrate.py && gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 3 --threads 2`
 4. Set Environment Variables:
    - `SECRET_KEY`: `<high-entropy-random-string>`
    - `DEBUG`: `False`
