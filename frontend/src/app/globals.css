@@ -53,6 +53,37 @@ body {
   background: rgba(234, 234, 255, 0.16);
 }
 
+/* Dedicated visible scrollbar for sidebar menu */
+.sidebar-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(102, 108, 255, 0.4) transparent;
+}
+
+.sidebar-scroll::-webkit-scrollbar {
+  width: 5px;
+}
+
+.sidebar-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar-scroll::-webkit-scrollbar-thumb {
+  background: rgba(102, 108, 255, 0.35);
+  border-radius: 9999px;
+}
+
+.sidebar-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(102, 108, 255, 0.7);
+}
+
+.dark .sidebar-scroll::-webkit-scrollbar-thumb {
+  background: rgba(102, 108, 255, 0.45);
+}
+
+.dark .sidebar-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(102, 108, 255, 0.85);
+}
+
 /* ========================================================================= */
 /* DEDICATED PRINT STYLES FOR CREDENTIAL SLIPS */
 /* ========================================================================= */

@@ -254,7 +254,7 @@ export function AppShell({
         </div>
       </div>
 
-      <div className="flex flex-1 overflow-hidden relative">
+      <div className="flex flex-1 min-h-0 relative">
         {/* Backdrop for Mobile Drawer */}
         {sidebarOpen && (
           <div
@@ -264,11 +264,11 @@ export function AppShell({
           />
         )}
 
-        {/* Left Sidebar (Desktop & Mobile Drawer) */}
+        {/* Left Sidebar (Desktop Fixed Sticky & Mobile Drawer) */}
         <aside
-          className={`fixed lg:static inset-y-0 ${
+          className={`fixed lg:sticky top-0 inset-y-0 ${
             isRTL ? "right-0" : "left-0"
-          } z-50 bg-white dark:bg-[#30334E] border-r border-[#262B43]/10 dark:border-[#EAEAFF]/10 flex flex-col justify-between transition-all duration-200 shadow-lg lg:shadow-none ${
+          } h-screen z-40 bg-white dark:bg-[#30334E] border-r border-[#262B43]/10 dark:border-[#EAEAFF]/10 flex flex-col shrink-0 transition-all duration-200 shadow-lg lg:shadow-none ${
             collapsed ? "w-[72px]" : "w-[260px]"
           } ${
             sidebarOpen
@@ -279,7 +279,7 @@ export function AppShell({
           }`}
         >
           {/* Brand Header */}
-          <div className="h-16 px-4 flex items-center justify-between border-b border-[#262B43]/8 dark:border-[#EAEAFF]/8">
+          <div className="h-16 px-4 flex items-center justify-between border-b border-[#262B43]/8 dark:border-[#EAEAFF]/8 shrink-0">
             <Link href="/admin" className="flex items-center gap-3 overflow-hidden group">
               <div className="w-9 h-9 rounded-lg bg-[#666CFF] text-white flex items-center justify-center font-bold shadow-sm shrink-0 group-hover:scale-105 transition-transform">
                 <GraduationCap className="w-5 h-5" />
@@ -320,7 +320,7 @@ export function AppShell({
           </div>
 
           {/* Navigation Links Scroll Container */}
-          <div className="flex-1 overflow-y-auto px-3 py-3 space-y-4 custom-scrollbar">
+          <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-3 py-3 space-y-3 sidebar-scroll">
             {navSections.map((section, idx) => (
               <div key={idx} className="space-y-1">
                 {section.heading && (
@@ -375,7 +375,7 @@ export function AppShell({
           </div>
 
           {/* User Profile Footer Card */}
-          <div className="p-3 border-t border-[#262B43]/8 dark:border-[#EAEAFF]/8">
+          <div className="shrink-0 p-3 border-t border-[#262B43]/8 dark:border-[#EAEAFF]/8">
             <div className={`p-2 rounded-xl bg-[#F7F7F9] dark:bg-[#282A42] flex items-center ${
               collapsed ? "justify-center" : "gap-3"
             }`}>
@@ -409,7 +409,7 @@ export function AppShell({
         </aside>
 
         {/* Main Workspace Area */}
-        <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
+        <div className="flex-1 min-w-0 flex flex-col min-h-screen">
           {/* Top Bar Header (64px) matching Old Design */}
           <header className="sticky top-0 z-30 h-16 bg-white/95 dark:bg-[#30334E]/95 backdrop-blur-md border-b border-[#262B43]/10 dark:border-[#EAEAFF]/10 px-4 sm:px-6 flex items-center justify-between gap-4 shadow-xs">
             {/* Left: Sidebar toggle + Search box */}
