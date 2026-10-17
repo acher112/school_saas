@@ -254,7 +254,7 @@ export function AppShell({
         </div>
       </div>
 
-      <div className="flex flex-1 min-h-0 relative">
+      <div className="flex-1 min-h-0 relative">
         {/* Backdrop for Mobile Drawer */}
         {sidebarOpen && (
           <div
@@ -264,11 +264,11 @@ export function AppShell({
           />
         )}
 
-        {/* Left Sidebar (Desktop Fixed Sticky & Mobile Drawer) */}
+        {/* Left Sidebar (Strictly Fixed h-screen on both Mobile and Desktop) */}
         <aside
-          className={`fixed lg:sticky top-0 inset-y-0 ${
+          className={`fixed inset-y-0 ${
             isRTL ? "right-0" : "left-0"
-          } h-screen z-40 bg-white dark:bg-[#30334E] border-r border-[#262B43]/10 dark:border-[#EAEAFF]/10 flex flex-col shrink-0 transition-all duration-200 shadow-lg lg:shadow-none ${
+          } h-screen max-h-screen z-40 bg-white dark:bg-[#30334E] border-r border-[#262B43]/10 dark:border-[#EAEAFF]/10 flex flex-col shrink-0 overflow-hidden transition-all duration-200 shadow-lg lg:shadow-none ${
             collapsed ? "w-[72px]" : "w-[260px]"
           } ${
             sidebarOpen
@@ -372,44 +372,48 @@ export function AppShell({
                 })}
               </div>
             ))}
-          </div>
 
-          {/* User Profile Footer Card */}
-          <div className="shrink-0 p-3 border-t border-[#262B43]/8 dark:border-[#EAEAFF]/8">
-            <div className={`p-2 rounded-xl bg-[#F7F7F9] dark:bg-[#282A42] flex items-center ${
-              collapsed ? "justify-center" : "gap-3"
-            }`}>
-              <div className="w-9 h-9 rounded-full bg-[#666CFF] text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-sm">
-                {effectiveUserName[0]?.toUpperCase() || "A"}
-              </div>
-
-              {!collapsed && (
-                <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-xs text-[#262B43] dark:text-[#EAEAFF] truncate">
-                    {effectiveUserName}
-                  </div>
-                  <div className="text-[11px] text-[#6D788D] dark:text-[#B6BEE3] truncate capitalize">
-                    {effectiveRole}
-                  </div>
+            {/* User Profile Card inside scroll at bottom */}
+            <div className="pt-2 border-t border-[#262B43]/8 dark:border-[#EAEAFF]/8">
+              <div className={`p-2 rounded-xl bg-[#F7F7F9] dark:bg-[#282A42] flex items-center ${
+                collapsed ? "justify-center" : "gap-3"
+              }`}>
+                <div className="w-9 h-9 rounded-full bg-[#666CFF] text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-sm">
+                  {effectiveUserName[0]?.toUpperCase() || "A"}
                 </div>
-              )}
 
-              {!collapsed && (
-                <button
-                  onClick={handleLogout}
-                  className="p-1.5 rounded-md text-[#FF4D49] hover:bg-[#FF4D49]/10 transition-colors"
-                  title="Logout"
-                  aria-label="Logout"
-                >
-                  <LogOut className="w-4 h-4" />
-                </button>
-              )}
+                {!collapsed && (
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-xs text-[#262B43] dark:text-[#EAEAFF] truncate">
+                      {effectiveUserName}
+                    </div>
+                    <div className="text-[11px] text-[#6D788D] dark:text-[#B6BEE3] truncate capitalize">
+                      {effectiveRole}
+                    </div>
+                  </div>
+                )}
+
+                {!collapsed && (
+                  <button
+                    onClick={handleLogout}
+                    className="p-1.5 rounded-md text-[#FF4D49] hover:bg-[#FF4D49]/10 transition-colors"
+                    title="Logout"
+                    aria-label="Logout"
+                  >
+                    <LogOut className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </aside>
 
-        {/* Main Workspace Area */}
-        <div className="flex-1 min-w-0 flex flex-col min-h-screen">
+        {/* Main Workspace Area: Left-padded by sidebar width on desktop */}
+        <div className={`flex-1 min-w-0 flex flex-col min-h-screen transition-all duration-200 ${
+          collapsed
+            ? isRTL ? "lg:mr-[72px]" : "lg:ml-[72px]"
+            : isRTL ? "lg:mr-[260px]" : "lg:ml-[260px]"
+        }`}>
           {/* Top Bar Header (64px) matching Old Design */}
           <header className="sticky top-0 z-30 h-16 bg-white/95 dark:bg-[#30334E]/95 backdrop-blur-md border-b border-[#262B43]/10 dark:border-[#EAEAFF]/10 px-4 sm:px-6 flex items-center justify-between gap-4 shadow-xs">
             {/* Left: Sidebar toggle + Search box */}
