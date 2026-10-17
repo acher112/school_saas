@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { performLogout, getCurrentUser, getSchoolSlug } from "@/lib/api";
 import { Language, translations, SUPPORTED_LANGUAGES, setAppLanguage } from "@/lib/translations";
 import { ThemeToggle } from "./ThemeToggle";
+import { CustomScrollbar } from "./CustomScrollbar";
 import {
   LayoutDashboard,
   GraduationCap,
@@ -319,93 +320,95 @@ export function AppShell({
             </button>
           </div>
 
-          {/* Navigation Links Scroll Container */}
-          <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-3 py-3 space-y-3 sidebar-scroll">
-            {navSections.map((section, idx) => (
-              <div key={idx} className="space-y-1">
-                {section.heading && (
-                  collapsed ? (
-                    <div className="my-2 border-t border-[#262B43]/10 dark:border-[#EAEAFF]/10" />
-                  ) : (
-                    <div className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-[#666CFF] dark:text-[#888DFF]">
-                      {section.heading}
-                    </div>
-                  )
-                )}
-
-                {section.items.map((item: any) => {
-                  const isActive = pathname === item.href || (item.href !== "/admin" && pathname.startsWith(item.href.split("?")[0]));
-                  const Icon = item.icon;
-
-                  return (
-                    <Link
-                      key={item.href + item.label}
-                      href={item.href}
-                      onClick={() => setSidebarOpen(false)}
-                      title={collapsed ? item.label : undefined}
-                      className={`flex items-center ${
-                        collapsed ? "justify-center px-2" : "justify-between px-3"
-                      } py-2.5 rounded-lg text-sm font-medium transition-all duration-150 ${
-                        isActive
-                          ? "bg-[#666CFF] text-white shadow-[0_2px_6px_rgba(102,108,255,0.35)]"
-                          : "text-[#262B43] dark:text-[#EAEAFF] hover:bg-[#666CFF]/8 dark:hover:bg-[#EAEAFF]/8"
-                      }`}
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <Icon
-                          className={`w-5 h-5 shrink-0 ${
-                            isActive ? "text-white" : "text-[#6D788D] dark:text-[#B6BEE3]"
-                          }`}
-                        />
-                        {!collapsed && <span className="truncate">{item.label}</span>}
+          {/* Navigation Links Scroll Container with Custom Scrollbar */}
+          <CustomScrollbar isRTL={isRTL}>
+            <div className="px-3 py-3 space-y-3">
+              {navSections.map((section, idx) => (
+                <div key={idx} className="space-y-1">
+                  {section.heading && (
+                    collapsed ? (
+                      <div className="my-2 border-t border-[#262B43]/10 dark:border-[#EAEAFF]/10" />
+                    ) : (
+                      <div className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-[#666CFF] dark:text-[#888DFF]">
+                        {section.heading}
                       </div>
+                    )
+                  )}
 
-                      {!collapsed && item.locked && (
-                        <Lock className="w-3.5 h-3.5 text-[#6D788D]/70 dark:text-[#B6BEE3]/70 shrink-0" />
-                      )}
+                  {section.items.map((item: any) => {
+                    const isActive = pathname === item.href || (item.href !== "/admin" && pathname.startsWith(item.href.split("?")[0]));
+                    const Icon = item.icon;
 
-                      {!collapsed && item.external && (
-                        <ExternalLink className="w-3.5 h-3.5 text-[#6D788D]/70 dark:text-[#B6BEE3]/70 shrink-0" />
-                      )}
-                    </Link>
-                  );
-                })}
-              </div>
-            ))}
+                    return (
+                      <Link
+                        key={item.href + item.label}
+                        href={item.href}
+                        onClick={() => setSidebarOpen(false)}
+                        title={collapsed ? item.label : undefined}
+                        className={`flex items-center ${
+                          collapsed ? "justify-center px-2" : "justify-between px-3"
+                        } py-2.5 rounded-lg text-sm font-medium transition-all duration-150 ${
+                          isActive
+                            ? "bg-[#666CFF] text-white shadow-[0_2px_6px_rgba(102,108,255,0.35)]"
+                            : "text-[#262B43] dark:text-[#EAEAFF] hover:bg-[#666CFF]/8 dark:hover:bg-[#EAEAFF]/8"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <Icon
+                            className={`w-5 h-5 shrink-0 ${
+                              isActive ? "text-white" : "text-[#6D788D] dark:text-[#B6BEE3]"
+                            }`}
+                          />
+                          {!collapsed && <span className="truncate">{item.label}</span>}
+                        </div>
 
-            {/* User Profile Card inside scroll at bottom */}
-            <div className="pt-2 border-t border-[#262B43]/8 dark:border-[#EAEAFF]/8">
-              <div className={`p-2 rounded-xl bg-[#F7F7F9] dark:bg-[#282A42] flex items-center ${
-                collapsed ? "justify-center" : "gap-3"
-              }`}>
-                <div className="w-9 h-9 rounded-full bg-[#666CFF] text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-sm">
-                  {effectiveUserName[0]?.toUpperCase() || "A"}
+                        {!collapsed && item.locked && (
+                          <Lock className="w-3.5 h-3.5 text-[#6D788D]/70 dark:text-[#B6BEE3]/70 shrink-0" />
+                        )}
+
+                        {!collapsed && item.external && (
+                          <ExternalLink className="w-3.5 h-3.5 text-[#6D788D]/70 dark:text-[#B6BEE3]/70 shrink-0" />
+                        )}
+                      </Link>
+                    );
+                  })}
                 </div>
+              ))}
 
-                {!collapsed && (
-                  <div className="flex-1 min-w-0">
-                    <div className="font-semibold text-xs text-[#262B43] dark:text-[#EAEAFF] truncate">
-                      {effectiveUserName}
-                    </div>
-                    <div className="text-[11px] text-[#6D788D] dark:text-[#B6BEE3] truncate capitalize">
-                      {effectiveRole}
-                    </div>
+              {/* User Profile Card inside scroll at bottom */}
+              <div className="pt-2 border-t border-[#262B43]/8 dark:border-[#EAEAFF]/8">
+                <div className={`p-2 rounded-xl bg-[#F7F7F9] dark:bg-[#282A42] flex items-center ${
+                  collapsed ? "justify-center" : "gap-3"
+                }`}>
+                  <div className="w-9 h-9 rounded-full bg-[#666CFF] text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-sm">
+                    {effectiveUserName[0]?.toUpperCase() || "A"}
                   </div>
-                )}
 
-                {!collapsed && (
-                  <button
-                    onClick={handleLogout}
-                    className="p-1.5 rounded-md text-[#FF4D49] hover:bg-[#FF4D49]/10 transition-colors"
-                    title="Logout"
-                    aria-label="Logout"
-                  >
-                    <LogOut className="w-4 h-4" />
-                  </button>
-                )}
+                  {!collapsed && (
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-xs text-[#262B43] dark:text-[#EAEAFF] truncate">
+                        {effectiveUserName}
+                      </div>
+                      <div className="text-[11px] text-[#6D788D] dark:text-[#B6BEE3] truncate capitalize">
+                        {effectiveRole}
+                      </div>
+                    </div>
+                  )}
+
+                  {!collapsed && (
+                    <button
+                      onClick={handleLogout}
+                      className="p-1.5 rounded-md text-[#FF4D49] hover:bg-[#FF4D49]/10 transition-colors"
+                      title="Logout"
+                      aria-label="Logout"
+                    >
+                      <LogOut className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
+          </CustomScrollbar>
         </aside>
 
         {/* Main Workspace Area: Left-padded by sidebar width on desktop */}

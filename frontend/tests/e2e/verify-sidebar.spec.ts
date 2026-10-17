@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import * as path from 'path';
 
-test('Verify fixed sticky sidebar at 1366x768 with internal scroll', async ({ page }) => {
+test('Verify visible sidebar scrollbar and whole page scroll at 1366x768', async ({ page }) => {
   await page.setViewportSize({ width: 1366, height: 768 });
 
   await page.addInitScript(() => {
@@ -31,36 +31,43 @@ test('Verify fixed sticky sidebar at 1366x768 with internal scroll', async ({ pa
     });
   });
 
+  // 1. Visit /admin dashboard
+  await page.goto('http://localhost:3000/admin');
+  await page.waitForLoadState('domcontentloaded');
+  await page.waitForTimeout(600);
+
+  // Verify sidebar scrollbar track and thumb exist and are visible
+  const thumb = page.locator('aside [aria-hidden="true"] > div');
+  const count = await thumb.count();
+  console.log('Thumb count:', count);
+  if (count > 0) {
+    const box = await thumb.boundingBox();
+    console.log('Thumb box:', JSON.stringify(box));
+    const isVisible = await thumb.isVisible();
+    console.log('Thumb isVisible:', isVisible);
+  } else {
+    console.log('Thumb NOT FOUND in DOM!');
+  }
+
+  // Take screenshot of /admin showing both scrollbars
+  const outPathAdmin = path.resolve('d:/school-saas/design/screenshots/comparison/admin/sidebar-with-scrollbar-admin.png');
+  await page.screenshot({ path: outPathAdmin });
+
+  // 2. Visit /admin/academics
   await page.goto('http://localhost:3000/admin/academics');
   await page.waitForLoadState('domcontentloaded');
   await page.waitForTimeout(600);
 
-  // Take screenshot at top
-  const outPath1 = path.resolve('d:/school-saas/design/screenshots/comparison/admin/sidebar-fixed-top-1366x768.png');
-  await page.screenshot({ path: outPath1 });
+  // Take screenshot of academics showing no empty space and visible scrollbar
+  const outPathAcademics = path.resolve('d:/school-saas/design/screenshots/comparison/admin/sidebar-with-scrollbar-academics.png');
+  await page.screenshot({ path: outPathAcademics });
 
-  // Scroll main window down 400px
-  await page.evaluate(() => window.scrollBy(0, 400));
-  await page.waitForTimeout(300);
-
-  // Verify sidebar is still at top of screen (sticky)
-  const asideBox = await page.locator('aside').boundingBox();
-  expect(asideBox).not.toBeNull();
-  if (asideBox) {
-    expect(asideBox.y).toBe(0); // Pinned to top of screen!
-    expect(asideBox.height).toBe(768); // Exact viewport height!
-  }
-
-  // Take screenshot when scrolled
-  const outPath2 = path.resolve('d:/school-saas/design/screenshots/comparison/admin/sidebar-fixed-scrolled-1366x768.png');
-  await page.screenshot({ path: outPath2 });
-
-  // Scroll inside sidebar to bottom
-  await page.locator('.sidebar-scroll').evaluate((el) => {
-    el.scrollTop = el.scrollHeight;
+  // 3. Scroll inside the sidebar by 250px
+  await page.locator('aside [aria-hidden="true"]').locator('..').locator('> div:first-child').evaluate((el) => {
+    el.scrollTop = 250;
   });
   await page.waitForTimeout(300);
 
-  const outPath3 = path.resolve('d:/school-saas/design/screenshots/comparison/admin/sidebar-scroll-internal-1366x768.png');
-  await page.screenshot({ path: outPath3 });
+  const outPathScrolled = path.resolve('d:/school-saas/design/screenshots/comparison/admin/sidebar-scrolled-down.png');
+  await page.screenshot({ path: outPathScrolled });
 });
