@@ -11,5 +11,6 @@ if (-not (Test-Path "$PG_DATA\PG_VERSION")) {
 }
 
 Write-Host "Starting project-local PostgreSQL on 127.0.0.1:55432 (Data: $PG_DATA)..."
-Start-Process -FilePath "$PG_BIN\postgres.exe" -ArgumentList "-D", "$PG_DATA" -RedirectStandardOutput "$LOG_FILE" -RedirectStandardError "$ERR_FILE" -WindowStyle Hidden
-Write-Host "Project-local PostgreSQL started successfully. Log file: $LOG_FILE"
+Start-Process -FilePath "$PG_BIN\postgres.exe" -ArgumentList "-D", "$PG_DATA" -WindowStyle Hidden
+Write-Host "Project-local PostgreSQL started successfully on port 55432."
+

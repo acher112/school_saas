@@ -9,36 +9,68 @@ import { ThemeToggle } from "./ThemeToggle";
 import { CustomScrollbar } from "./CustomScrollbar";
 import {
   LayoutDashboard,
-  GraduationCap,
-  Users,
-  CreditCard,
-  CalendarCheck,
-  Building2,
-  ShieldCheck,
   Settings,
+  Building2,
+  Building,
+  LineChart,
+  Users,
+  User,
+  UserPlus,
+  Edit3,
+  GraduationCap,
+  Landmark,
+  Shapes,
+  BookOpen,
+  Link2,
+  CalendarCheck,
+  CalendarDays,
+  Calendar,
+  Award,
+  Star,
+  FileText,
+  FilePlus,
+  ArrowUpCircle,
+  FastForward,
   LogOut,
+  Archive,
+  CreditCard,
+  UserCheck,
+  BookMarked,
+  Wallet,
+  ListChecks,
+  TrendingUp,
+  Receipt,
+  List,
+  PlusCircle,
+  FileSpreadsheet,
+  Printer,
+  Contact,
+  BadgeCheck,
+  FileCheck,
+  FileCheck2,
+  Coins,
+  Send,
+  Mail,
+  Bus,
+  BarChart2,
+  BarChart3,
+  PieChart,
+  AlertTriangle,
+  Gift,
+  Monitor,
+  HelpCircle,
+  ChevronDown,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
   Search,
   Bell,
   Menu,
   X,
-  ChevronDown,
-  User,
   Sparkles,
   History,
+  ShieldCheck,
   Lock,
-  Award,
-  BookOpen,
-  Receipt,
-  Landmark,
-  Printer,
-  Bus,
-  BarChart3,
-  CalendarX,
-  UserPlus,
-  ArrowUpCircle,
-  Globe,
-  ChevronsLeft,
-  ChevronsRight,
   ExternalLink,
 } from "lucide-react";
 
@@ -57,6 +89,219 @@ interface AppShellProps {
   onSelectCampus?: (id: string) => void;
   breadcrumbs?: Array<{ label: string; href?: string }>;
 }
+
+export interface NavChild {
+  title: string;
+  href: string;
+  icon?: any;
+}
+
+export interface NavItem {
+  title: string;
+  href?: string;
+  icon: any;
+  children?: NavChild[];
+  locked?: boolean;
+  external?: boolean;
+}
+
+export interface NavSection {
+  heading: string | null;
+  items: NavItem[];
+}
+
+// 100% exact hierarchical menu matching sandbox-old/resources/js/navigation/vertical/school.js
+// and Screenshots (314) through (330)
+const navSections: NavSection[] = [
+  // ── Top-level links (No heading) ──
+  {
+    heading: null,
+    items: [
+      { title: "Dashboard", href: "/admin", icon: LayoutDashboard },
+      { title: "School Settings", href: "/setting", icon: Settings },
+    ],
+  },
+  // ── SCHOOL Section ──
+  {
+    heading: "SCHOOL",
+    items: [
+      {
+        title: "Campuses",
+        icon: Building2,
+        children: [
+          { title: "Campus Comparison", href: "/campuses", icon: Building },
+          { title: "Campus Performance", href: "/campus-performance", icon: LineChart },
+        ],
+      },
+      {
+        title: "Admissions",
+        icon: UserPlus,
+        children: [
+          { title: "Student Details", href: "/students", icon: User },
+          { title: "Bulk Edit", href: "/students/bulk-edit", icon: Edit3 },
+        ],
+      },
+      {
+        title: "Academic",
+        icon: Landmark,
+        children: [
+          { title: "Classes", href: "/classes", icon: Landmark },
+          { title: "Sections", href: "/sections", icon: Shapes },
+          { title: "Subjects", href: "/curriculum-class-subject", icon: BookOpen },
+          { title: "Assign Subjects", href: "/assign-subject", icon: Link2 },
+        ],
+      },
+      {
+        title: "Attendance",
+        icon: CalendarCheck,
+        children: [
+          { title: "Student Attendance", href: "/attendance", icon: CalendarCheck },
+          { title: "Employee Attendance", href: "/hrm-attendance", icon: CalendarDays },
+        ],
+      },
+      {
+        title: "Examination",
+        icon: Award,
+        children: [
+          { title: "Grade Description", href: "/exam/grades", icon: Star },
+          { title: "Exam Term", href: "/exam/term", icon: Calendar },
+          { title: "Exam Dates", href: "/exam/setup", icon: Settings },
+          { title: "Date Sheet", href: "/exam/date_sheets", icon: FileText },
+          { title: "Bulk Date Sheet", href: "/exam/date_sheets_bulk_create", icon: FilePlus },
+        ],
+      },
+      {
+        title: "Promotion",
+        icon: ArrowUpCircle,
+        children: [
+          { title: "Automatic Promotion", href: "/promotion/create", icon: FastForward },
+          { title: "Mannual Promotion", href: "/promotion", icon: ArrowUpCircle },
+          { title: "Pass Out", href: "/pass-out-create", icon: LogOut },
+        ],
+      },
+      {
+        title: "Withdrawal",
+        icon: BookOpen,
+        children: [
+          { title: "Withdrawal Students", href: "/withdrawal-students-list", icon: Archive },
+          { title: "Withdrawal Register", href: "/withdrawal_register", icon: BookOpen },
+        ],
+      },
+    ],
+  },
+  // ── FINANCE Section ──
+  {
+    heading: "FINANCE",
+    items: [
+      {
+        title: "Fees & Collection",
+        icon: CreditCard,
+        children: [
+          { title: "Fee Overview", href: "/fee-allocation", icon: CreditCard },
+          { title: "Individual Fee Collect", href: "/fee-collection-individual/create", icon: UserCheck },
+          { title: "Fee Register", href: "/fee-register", icon: BookMarked },
+          { title: "Transport Fee Allocation", href: "/other-fee/create", icon: Wallet },
+          { title: "Extra Fee Allocation", href: "/fee-heads", icon: ListChecks },
+          { title: "Incre/Decre Fee", href: "/fee-increment", icon: TrendingUp },
+        ],
+      },
+      {
+        title: "Expense",
+        icon: Receipt,
+        children: [
+          { title: "Categories", href: "/expense-categories", icon: List },
+          { title: "Expense List", href: "/expenses", icon: FileText },
+          { title: "Add Expense", href: "/expenses/create", icon: PlusCircle },
+        ],
+      },
+      {
+        title: "Payment Accounts",
+        icon: Wallet,
+        children: [
+          { title: "List Accounts", href: "/account/account", icon: Wallet },
+          { title: "Balance Sheet", href: "/account/balance-sheet", icon: FileSpreadsheet },
+          { title: "Trial Balance", href: "/account/trial-balance", icon: FileText },
+        ],
+      },
+      {
+        title: "Bulk Printing",
+        icon: Printer,
+        children: [
+          { title: "Challan Print", href: "/class-wise-fee-card-printing", icon: Printer },
+          { title: "Student Card Print", href: "/create-class-wise-id-print", icon: Contact },
+          { title: "Employee Card Print", href: "/create-employee-id-print", icon: BadgeCheck },
+          { title: "Staff Attendance Report", href: "/report-attendance/create", icon: FileCheck },
+          { title: "Student Attendance Report", href: "/report-attendance", icon: FileCheck2 },
+        ],
+      },
+    ],
+  },
+  // ── PEOPLE Section ──
+  {
+    heading: "PEOPLE",
+    items: [
+      {
+        title: "Employees",
+        icon: Users,
+        children: [
+          { title: "Employees", href: "/hrm-employee", icon: Users },
+          { title: "Payroll", href: "/hrm-payroll", icon: Coins },
+        ],
+      },
+      {
+        title: "Leave Applications",
+        icon: Send,
+        children: [
+          { title: "Employee Leave", href: "/hrm-leave_applications", icon: Send },
+          { title: "Student Leave", href: "/leave_application_students", icon: Mail },
+        ],
+      },
+    ],
+  },
+  // ── OPERATIONS Section ──
+  {
+    heading: "OPERATIONS",
+    items: [
+      {
+        title: "Transport",
+        icon: Bus,
+        children: [
+          { title: "Vehicles", href: "/vehicles", icon: Bus },
+        ],
+      },
+    ],
+  },
+  // ── REPORTS Section ──
+  {
+    heading: "REPORTS",
+    items: [
+      {
+        title: "Reports",
+        icon: BarChart3,
+        children: [
+          { title: "Class Report", href: "/class-report", icon: LineChart },
+          { title: "Strength Report", href: "/report/strength", icon: BarChart2 },
+          { title: "Expense Report", href: "/report/expense-report", icon: PieChart },
+          { title: "Top Defaulters", href: "/report/top-defaulter", icon: AlertTriangle },
+          { title: "Income Report", href: "/income-report", icon: BarChart3 },
+        ],
+      },
+      {
+        title: "Subscription",
+        href: "/subscription",
+        icon: Gift,
+      },
+      {
+        title: "Frontend",
+        icon: Monitor,
+        children: [
+          { title: "Settings", href: "/front-settings", icon: Monitor },
+          { title: "FAQ", href: "/front-faqs", icon: HelpCircle },
+        ],
+      },
+    ],
+  },
+];
 
 export function AppShell({
   children,
@@ -81,6 +326,10 @@ export function AppShell({
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [langDropdownOpen, setLangDropdownOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const [openDropdowns, setOpenDropdowns] = useState<Record<string, boolean>>({
+    Admissions: true, // Default open for students view
+  });
+
   const [currentUser, setCurrentUser] = useState<any>(() => {
     if (typeof window !== "undefined") {
       return getCurrentUser();
@@ -94,6 +343,29 @@ export function AppShell({
       setCurrentUser(u);
     }
   }, []);
+
+  // Automatically expand parent dropdown if any child route matches current pathname
+  useEffect(() => {
+    navSections.forEach((section) => {
+      section.items.forEach((item) => {
+        if (item.children) {
+          const isChildActive = item.children.some(
+            (c) => pathname === c.href || (c.href !== "/" && pathname.startsWith(c.href))
+          );
+          if (isChildActive) {
+            setOpenDropdowns((prev) => ({ ...prev, [item.title]: true }));
+          }
+        }
+      });
+    });
+  }, [pathname]);
+
+  const toggleDropdown = (title: string) => {
+    setOpenDropdowns((prev) => ({
+      ...prev,
+      [title]: !prev[title],
+    }));
+  };
 
   const cachedSlug = typeof window !== "undefined" ? getSchoolSlug() : null;
 
@@ -151,66 +423,6 @@ export function AppShell({
   const handleLogout = async () => {
     await performLogout();
   };
-
-  // Structured sidebar navigation matching reference/code/resources/js/navigation/vertical/school.js
-  const navSections = [
-    {
-      heading: null,
-      items: [
-        { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
-        { href: "/dashboard/settings", label: "School Settings", icon: Settings, locked: true },
-      ],
-    },
-    {
-      heading: "SCHOOL",
-      items: [
-        { href: "/admin/campuses", label: "Campuses", icon: Building2 },
-        { href: "/admin/people?tab=students", label: "Admissions", icon: UserPlus },
-        { href: "/admin/academics", label: "Academic", icon: GraduationCap },
-        { href: "/teacher", label: "Attendance", icon: CalendarCheck },
-        { href: "/headmaster", label: "Examination", icon: Award },
-        { href: "/admin/academics?tab=promotion", label: "Promotion", icon: ArrowUpCircle },
-        { href: "/admin/people?tab=withdrawal", label: "Withdrawal", icon: BookOpen },
-      ],
-    },
-    {
-      heading: "FINANCE",
-      items: [
-        { href: "/accountant", label: "Fees & Collection", icon: CreditCard },
-        { href: "/admin/finance?tab=expense", label: "Expense", icon: Receipt },
-        { href: "/admin/finance?tab=accounts", label: "Payment Accounts", icon: Landmark },
-        { href: "/admin/finance?tab=bulk-printing", label: "Bulk Printing", icon: Printer },
-      ],
-    },
-    {
-      heading: "PEOPLE",
-      items: [
-        { href: "/admin/people", label: "Employees", icon: Users },
-        { href: "/admin/people?tab=leave", label: "Leave Applications", icon: CalendarX },
-        { href: "/admin/roles-permissions", label: "Roles & Permissions", icon: ShieldCheck },
-        { href: "/admin/audit-logs", label: "Audit Logs", icon: History },
-      ],
-    },
-    {
-      heading: "OPERATIONS",
-      items: [
-        { href: "/admin/operations?tab=transport", label: "Transport", icon: Bus },
-      ],
-    },
-    {
-      heading: "REPORTS",
-      items: [
-        { href: "/admin/reports", label: "Reports", icon: BarChart3 },
-      ],
-    },
-    {
-      heading: null,
-      items: [
-        { href: "/admin/subscription", label: "Subscription", icon: Sparkles, highlight: true },
-        { href: "/", label: "Frontend", icon: Globe, external: true },
-      ],
-    },
-  ];
 
   const currentLangInfo = SUPPORTED_LANGUAGES.find((l) => l.code === lang) || SUPPORTED_LANGUAGES[0];
 
@@ -320,63 +532,142 @@ export function AppShell({
             </button>
           </div>
 
-          {/* Navigation Links Scroll Container with Custom Scrollbar */}
-          <CustomScrollbar isRTL={isRTL}>
-            <div className="px-3 py-3 space-y-3">
-              {navSections.map((section, idx) => (
-                <div key={idx} className="space-y-1">
-                  {section.heading && (
-                    collapsed ? (
-                      <div className="my-2 border-t border-[#262B43]/10 dark:border-[#EAEAFF]/10" />
-                    ) : (
-                      <div className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-[#666CFF] dark:text-[#888DFF]">
-                        {section.heading}
-                      </div>
-                    )
-                  )}
+          {/* Navigation Links Scroll Container with Dedicated Scrollbar matching old design */}
+          <div className="flex-1 min-h-0 overflow-y-auto sidebar-scroll px-3 py-3 space-y-3">
+            {navSections.map((section, idx) => (
+              <div key={idx} className="space-y-1">
+                {section.heading && (
+                  collapsed ? (
+                    <div className="my-2 border-t border-[#262B43]/10 dark:border-[#EAEAFF]/10" />
+                  ) : (
+                    <div className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-[#666CFF] dark:text-[#888DFF]">
+                      {section.heading}
+                    </div>
+                  )
+                )}
 
-                  {section.items.map((item: any) => {
-                    const isActive = pathname === item.href || (item.href !== "/admin" && pathname.startsWith(item.href.split("?")[0]));
-                    const Icon = item.icon;
+                {section.items.map((item) => {
+                  const Icon = item.icon;
+
+                  // ── CASE 1: Dropdown Menu with Children ──
+                  if (item.children && item.children.length > 0) {
+                    const isOpen = !!openDropdowns[item.title];
+                    const isAnyChildActive = item.children.some(
+                      (c) => pathname === c.href || (c.href !== "/" && pathname.startsWith(c.href))
+                    );
 
                     return (
-                      <Link
-                        key={item.href + item.label}
-                        href={item.href}
-                        onClick={() => setSidebarOpen(false)}
-                        title={collapsed ? item.label : undefined}
-                        className={`flex items-center ${
-                          collapsed ? "justify-center px-2" : "justify-between px-3"
-                        } py-2.5 rounded-lg text-sm font-medium transition-all duration-150 ${
-                          isActive
-                            ? "bg-[#666CFF] text-white shadow-[0_2px_6px_rgba(102,108,255,0.35)]"
-                            : "text-[#262B43] dark:text-[#EAEAFF] hover:bg-[#666CFF]/8 dark:hover:bg-[#EAEAFF]/8"
-                        }`}
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <Icon
-                            className={`w-5 h-5 shrink-0 ${
-                              isActive ? "text-white" : "text-[#6D788D] dark:text-[#B6BEE3]"
-                            }`}
-                          />
-                          {!collapsed && <span className="truncate">{item.label}</span>}
-                        </div>
+                      <div key={item.title} className="space-y-0.5">
+                        <button
+                          type="button"
+                          onClick={() => toggleDropdown(item.title)}
+                          title={collapsed ? item.title : undefined}
+                          className={`w-full flex items-center ${
+                            collapsed ? "justify-center px-2" : "justify-between px-3"
+                          } py-2 rounded-lg text-xs font-semibold transition-all duration-150 ${
+                            isAnyChildActive
+                              ? "text-[#666CFF] dark:text-[#888DFF] bg-[#666CFF]/8 dark:bg-[#666CFF]/15"
+                              : "text-[#262B43] dark:text-[#EAEAFF] hover:bg-[#666CFF]/6 dark:hover:bg-[#EAEAFF]/6"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <Icon
+                              className={`w-4 h-4 shrink-0 ${
+                                isAnyChildActive ? "text-[#666CFF]" : "text-[#6D788D] dark:text-[#B6BEE3]"
+                              }`}
+                            />
+                            {!collapsed && <span className="truncate">{item.title}</span>}
+                          </div>
 
-                        {!collapsed && item.locked && (
-                          <Lock className="w-3.5 h-3.5 text-[#6D788D]/70 dark:text-[#B6BEE3]/70 shrink-0" />
-                        )}
+                          {!collapsed && (
+                            <ChevronRight
+                              className={`w-3.5 h-3.5 text-[#6D788D] dark:text-[#B6BEE3] transition-transform duration-200 shrink-0 ${
+                                isOpen ? (isRTL ? "-rotate-90" : "rotate-90") : ""
+                              }`}
+                            />
+                          )}
+                        </button>
 
-                        {!collapsed && item.external && (
-                          <ExternalLink className="w-3.5 h-3.5 text-[#6D788D]/70 dark:text-[#B6BEE3]/70 shrink-0" />
+                        {/* Dropdown Children */}
+                        {isOpen && !collapsed && (
+                          <div className="space-y-0.5 pl-4 rtl:pl-0 rtl:pr-4 py-0.5 border-l-2 border-[#666CFF]/20 rtl:border-l-0 rtl:border-r-2 ml-4 rtl:ml-0 rtl:mr-4">
+                            {item.children.map((child) => {
+                              const isChildActive =
+                                pathname === child.href ||
+                                (child.href !== "/admin" && child.href !== "/" && pathname.startsWith(child.href));
+                              const ChildIcon = child.icon;
+
+                              return (
+                                <Link
+                                  key={child.href + child.title}
+                                  href={child.href}
+                                  onClick={() => setSidebarOpen(false)}
+                                  className={`flex items-center gap-2.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-150 ${
+                                    isChildActive
+                                      ? "bg-[#666CFF] text-white shadow-[0_2px_6px_rgba(102,108,255,0.35)] font-semibold"
+                                      : "text-[#262B43] dark:text-[#EAEAFF] hover:bg-[#666CFF]/8 dark:hover:bg-[#EAEAFF]/8"
+                                  }`}
+                                >
+                                  {ChildIcon && (
+                                    <ChildIcon
+                                      className={`w-3.5 h-3.5 shrink-0 ${
+                                        isChildActive ? "text-white" : "text-[#6D788D] dark:text-[#B6BEE3]"
+                                      }`}
+                                    />
+                                  )}
+                                  <span className="truncate">{child.title}</span>
+                                </Link>
+                              );
+                            })}
+                          </div>
                         )}
-                      </Link>
+                      </div>
                     );
-                  })}
-                </div>
-              ))}
+                  }
 
-              {/* User Profile Card inside scroll at bottom */}
-              <div className="pt-2 border-t border-[#262B43]/8 dark:border-[#EAEAFF]/8">
+                  // ── CASE 2: Single Link Item ──
+                  const isActive =
+                    pathname === item.href ||
+                    (item.href !== "/admin" && item.href !== "/" && pathname.startsWith(item.href || ""));
+
+                  return (
+                    <Link
+                      key={(item.href || "") + item.title}
+                      href={item.href || "#"}
+                      onClick={() => setSidebarOpen(false)}
+                      title={collapsed ? item.title : undefined}
+                      className={`flex items-center ${
+                        collapsed ? "justify-center px-2" : "justify-between px-3"
+                      } py-2 rounded-lg text-xs font-medium transition-all duration-150 ${
+                        isActive
+                          ? "bg-[#666CFF] text-white shadow-[0_2px_6px_rgba(102,108,255,0.35)] font-semibold"
+                          : "text-[#262B43] dark:text-[#EAEAFF] hover:bg-[#666CFF]/8 dark:hover:bg-[#EAEAFF]/8"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <Icon
+                          className={`w-4 h-4 shrink-0 ${
+                            isActive ? "text-white" : "text-[#6D788D] dark:text-[#B6BEE3]"
+                          }`}
+                        />
+                        {!collapsed && <span className="truncate">{item.title}</span>}
+                      </div>
+
+                      {!collapsed && item.locked && (
+                        <Lock className="w-3.5 h-3.5 text-[#6D788D]/70 dark:text-[#B6BEE3]/70 shrink-0" />
+                      )}
+
+                      {!collapsed && item.external && (
+                        <ExternalLink className="w-3.5 h-3.5 text-[#6D788D]/70 dark:text-[#B6BEE3]/70 shrink-0" />
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
+            ))}
+
+            {/* User Profile Card inside scroll at bottom */}
+            <div className="pt-2 border-t border-[#262B43]/8 dark:border-[#EAEAFF]/8">
                 <div className={`p-2 rounded-xl bg-[#F7F7F9] dark:bg-[#282A42] flex items-center ${
                   collapsed ? "justify-center" : "gap-3"
                 }`}>
@@ -405,10 +696,9 @@ export function AppShell({
                       <LogOut className="w-4 h-4" />
                     </button>
                   )}
-                </div>
               </div>
             </div>
-          </CustomScrollbar>
+          </div>
         </aside>
 
         {/* Main Workspace Area: Left-padded by sidebar width on desktop */}
